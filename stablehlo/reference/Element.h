@@ -37,7 +37,7 @@ class Element {
   Element(Type type, APInt value) : type_(type), value_(value) {}
   Element(Type type, APFloat value) : type_(type), value_(value) {}
   Element(Type type, std::complex<APFloat> value)
-      : type_(type), value_(std::make_pair(value.real(), value.imag())) {}
+      : type_(type), value_(value) {}
 
   Element(const Element &other) = default;
   /// @}
@@ -59,8 +59,7 @@ class Element {
   /// Returns the underlying complex value stored in an Element object with
   /// complex type.
   std::complex<APFloat> getComplexValue() const {
-    auto floatPair = std::get<std::pair<APFloat, APFloat>>(value_);
-    return std::complex<APFloat>(floatPair.first, floatPair.second);
+    return std::get<std::complex<APFloat>>(value_);
   }
 
   /// Overloaded + operator.
@@ -74,7 +73,7 @@ class Element {
 
  private:
   Type type_;
-  std::variant<APInt, APFloat, std::pair<APFloat, APFloat>> value_;
+  std::variant<APInt, APFloat, std::complex<APFloat>> value_;
 };
 
 /// Returns element-wise ceil of Element object.
