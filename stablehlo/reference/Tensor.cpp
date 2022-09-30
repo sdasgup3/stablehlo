@@ -344,13 +344,42 @@ IndexSpaceIterator Tensor::index_end() const {
 }
 
 void Tensor::print(raw_ostream &os) const {
-  getType().print(os);
-  os << " {\n";
-
+  SmallVector<Element> elms;
   for (auto it = this->index_begin(); it != this->index_end(); ++it)
-    os << "  " << get(*it) << "\n";
+    elms.push_back(get(*it));
 
-  os << "}";
+  auto elmType = getType().cast<ShapedType>().getElementType();
+  if (isSupportedIntegerType(elmType)) {
+    auto intValues =
+        llvm::to_vector(llvm::map_range(elms, [](const Element &elm) -> APInt {
+          return elm.getIntegerValue();
+        }));
+    DenseElementsAttr::get(getType(), intValues).print(os);
+    os << "\n";
+    return;
+  }
+
+  if (isSupportedFloatType(elmType)) {
+    auto floatValues = llvm::to_vector(llvm::map_range(
+        elms,
+        [](const Element &elm) -> APFloat { return elm.getFloatValue(); }));
+    DenseElementsAttr::get(getType(), floatValues).print(os);
+    os << "\n";
+    return;
+  }
+
+  if (isSupportedComplexType(elmType)) {
+    auto complexValues = llvm::to_vector(
+        llvm::map_range(elms, [](const Element &elm) -> std::complex<APFloat> {
+          return elm.getComplexValue();
+        }));
+    DenseElementsAttr::get(getType(), complexValues).print(os);
+    os << "\n";
+    return;
+  }
+
+  report_fatal_error(
+      invalidArgument("Unsupported type: %s", debugString(elmType).c_str()));
 }
 
 void Tensor::dump() const { print(llvm::errs()); }
