@@ -2109,22 +2109,24 @@ def StableHLO_FftOp: StableHLO_Op<"fft", [InferTensorType, NoSideEffect]> {
 def StableHLO_GatherOp: StableHLO_Op<"gather", [InferTensorTypeWithReify, NoSideEffect]> {
   let summary = "Gather operator";
   let description = [{
-    Stitches together several slices of `operand` from offsets specified in
-    `start_indices` (each slice at a potentially different runtime offset).
+    Gathers slices from `operand` tensor from offsets specified in
+    `start_indices` and produces a `result` tensor.
+
 
     See:
     https://github.com/openxla/stablehlo/blob/main/docs/spec_draft.md#stablehlogather
 
+    Example:
     ```mlir
     %result = "stablehlo.gather"(%operand, %start_indices) {
-      dimension_numbers = #mhlo.gather<
-        collapsed_slice_dims = [0],
-        index_vector_dim = 2,
+      dimension_numbers = #stablehlo.gather<
         offset_dims = [2, 3],
-        start_index_map = [0, 2]
+        collapsed_slice_dims = [0],
+        start_index_map = [0, 2],
+        index_vector_dim = 2,
       >,
-      indices_are_sorted = false,
-      slice_sizes = dense<[0, 2, 2]> : tensor<3xi64>
+      slice_sizes = dense<[0, 2, 2]> : tensor<3xi64>,
+      indices_are_sorted = false
     } : (tensor<3x4x2xi32>, tensor<2x3x2xi64>) -> tensor<2x3x2x2xi32>
     ```
   }];
@@ -2418,11 +2420,13 @@ def StableHLO_PadOp: StableHLO_ShapedInterfaceOp<"pad",
     https://github.com/openxla/stablehlo/blob/main/docs/spec_draft.md#stablehlopad
 
     Example:
+    ```mlir
     %0 = "stablehlo.pad"(%arg0, %arg1) {
       edge_padding_low = dense<[0, 1]> : tensor<2xi64>,
       edge_padding_high = dense<[2, 1]> : tensor<2xi64>,
       interior_padding = dense<[1, 2]> : tensor<2xi64>
     } : (tensor<2x3xi32>, tensor<i32>) -> tensor<5x9xi32>
+    ```
   }];
   let arguments = (ins
     HLO_Tensor:$operand,
