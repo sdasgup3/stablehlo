@@ -761,70 +761,34 @@ defined and one of the following:
 Gathers slices from `operand` tensor from offsets specified in `start_indices`
 and produces a `result` tensor.
 
-Informally, every index `out` in `result` corresponds to an element in `operand`
-which is computed as the following steps:
+The following diagram shows how elements in `result` map on elements in
+`operand` using a concrete example. The diagram picks a few example `result`
+indexes and explains in detail which `operand` indexes they correspond to.
 
-  1. Given the batch dimensions, `batch_dims` = {`k`: `k` is a dimension of
-    `result` and `k` $\notin$ `offset_dims`}, extract the batching indices $G$
-    from `out`. That is, $G =$ { `out`[`k`] : `k` $\in$ `batch_dims`}.
-  2. Use $G$ to look up a starting index slice from `start_indices` of size
-     dim(`start_indices`, `index_vector_dim`) along `index_vector_dim` dimension.
-  3. Use `start_index_map` to scatter the starting index slice (whose size may
-     be less than rank(`operand`)) into the iteration space of `operand`
-     creating a "full" starting index into the operand.
-  4. Extract a slice out of `operand` with size `slice_sizes` using the full
-     starting index.
-  5. Reshape the slice by collapsing the `collapsed_slice_dims` dimensions.
-     Since all collapsed slice dimensions must have a bound of 1, this reshape
-     is always legal.
-  6. Use the indices of `out` at `offset_dims` to index into the above slice to
-     get the input element corresponding to output index `out`.
+<img align="center" src="spec_draft/gather.png" />
 
-The following diagram depicts the behavior of the op, based on the above
-mentioned steps, using a concrete example. It uses a few instances of `out`
-indices to demonstrate how they are mapped to input elements.
-
-<p align="center">
-  <img src="spec_images/gather.png" />
-</p>
-
-More formally, the operand index `in` corresponding to a given output index
-`out` is calculated as follows:
-
-1. If `index_vector_dim` $=$ rank(`start_indices`), add a trailing $1$ on the
-   shape of `start_indices`.
-2. Let $G =$ { `out`[`k`] for `k` in `batch_dims`}. Use $G$ to slice out a
-   vector $S$ such that $S$[`i`] = `start_indices`[`Combine`($G$, `i`)] where
-   `Combine`(`A`, `b`) inserts b at position `index_vector_dim` into `A`.
-   Note that this is well defined even if $G$ is empty -- if $G$ is empty then
-   $S =$ `start_indices`.
-
-3. Create a starting index, $S_{in}$, into operand using $S$ by scattering $S$
-   using `start_index_map`. More precisely:
-     * $S_{in}$[`start_index_map`[`k`]] = $S$[`k`] if `k` $\lt$
-     size(`start_index_map`).
-     * $S_{in}$[ _ ] $= 0$, Otherwise.
-
-4. Create an index $O_{in}$ into `operand` by scattering the indices at the
-   offset dimensions `offset_dims` in `out` according to the
-   `collapsed_slice_dims` set. More precisely:
-    * $O_{in}$[`remapped_offset_dims`(`k`)] = `out`[`offset_dims`[`k`]] if `k`
-    $\lt$ size(`offset_dims`), where `remapped_offset_dims` is a monotonic
-    function with domain [0, size(`offset_dims`)) and range
-    [0, rank(`operand`)) $-$ `collapsed_slice_dims`. So if, e.g.,
-    size(`offset_dims`) is `4`, rank(`operand`) is `6` and
-    `collapsed_slice_dims` is `{0, 2}` then `remapped_offset_dims` is
-    `{0 -> 1, 1 -> 3, 2 -> 4, 3 -> 5}`.
-    * $O_{in}$[ \_ ] $= 0$, Otherwise.
-
-5. `in` $= O_{in} + S_{in}$ where $+$ is element-wise addition. If
-   `in`[i] $\ge$ `di`, where `di` is the `i`$^{th}$ dimension size of `operand`,
-   then the behavior is implementation defined.
-
+More formally, `result[result_index] = operand[operand_index]` where:
+  * `batch_dims` = [`d` for `d` in `axes(result)` and `d` not in `offset_dims`].
+  * `batch_index` = [`result_index[d]` for `d` in `batch_dims`].
+  * `start_index` =
+      * `start_indices[bi0, ..., :, ..., biN]` where `bi` are individual
+        elements in `batch_index` and `:` is inserted at the `index_vector_dim`
+        index, if `index_vector_dim` < `rank(start_indices)`.
+      * `[start_indices[batch_index]]` otherwise.
+  * For `do` in `axes(operand)`,
+      * `full_start_index[do]` = `start_index[ds]` if `do = start_index_map[ds]`.
+      * `full_start_index[do]` = `0` otherwise.
+  * `offset_index` = [`result_index[d]` for `d` in `offset_dims`].
+  * `full_offset_index` = `[oi0, ..., 0, ..., oiN]` where `oi` are individual
+    elements in `offset_index`, and `0` is inserted at indices from
+    `collapsed_slice_dims`.
+  * `operand_index` = `add(full_start_index, full_offset_index)`.
+    If `operand_index` is out of bounds for `operand`, then the behavior is
+    implementation-defined.
 
 If `indices_are_sorted` is `true` then the implementation can assume that the
 `start_indices` are sorted (in ascending `start_index_map` order) by the user.
-If they are not then the semantics is implementation defined.
+If they are not, then the behavior is implementation-defined.
 
 ### Inputs
 
