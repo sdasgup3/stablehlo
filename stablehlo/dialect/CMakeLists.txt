@@ -190,3 +190,21 @@ add_mlir_dialect_library(VhloOps
   MLIRSupport
   MLIRQuantDialect
 )
+
+set(LLVM_TARGET_DEFINITIONS CheckOps.td)
+mlir_tablegen(CheckOps.h.inc -gen-op-decls)
+mlir_tablegen(CheckOps.cpp.inc -gen-op-defs)
+add_public_tablegen_target(CheckOpsIncGen)
+add_dependencies(mlir-headers CheckOpsIncGen)
+
+add_mlir_dialect_library(CheckOps
+  PARTIAL_SOURCES_INTENDED
+  CheckOps.cpp
+
+  DEPENDS
+  CheckOpsIncGen
+
+  LINK_LIBS PUBLIC
+  MLIRIR
+  MLIRSupport
+)
