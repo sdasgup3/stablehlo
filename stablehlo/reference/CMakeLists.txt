@@ -37,6 +37,15 @@ add_mlir_library(StablehloReferenceIndex
   LINK_LIBS PUBLIC
   MLIRIR
   MLIRSupport
+  StablehloReferencePrototype
+)
+
+add_mlir_library(StablehloReferencePrototype
+  PARTIAL_SOURCES_INTENDED
+  Prototype.cpp
+
+  LINK_LIBS PUBLIC
+  MLIRIR
 )
 
 add_mlir_library(StablehloReferenceScope
@@ -56,6 +65,7 @@ add_mlir_library(StablehloReferenceTensor
   MLIRIR
   StablehloReferenceElement
   StablehloReferenceIndex
+  StablehloReferencePrototype
   StablehloReferenceTypes
 )
 
@@ -68,6 +78,7 @@ add_mlir_library(StablehloReferenceOps
   StablehloOps
   StablehloReferenceElement
   StablehloReferenceIndex
+  StablehloReferencePrototype
   StablehloReferenceScope
   StablehloReferenceTensor
 )

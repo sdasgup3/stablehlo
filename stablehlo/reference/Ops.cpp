@@ -29,6 +29,16 @@ limitations under the License.
 
 namespace mlir {
 namespace stablehlo {
+namespace {
+
+Index evalIndices(ArrayRef<Tensor> runtimeIndices) {
+  Index index(runtimeIndices.size());
+  for (size_t i = 0; i < runtimeIndices.size(); ++i)
+    index[i] = runtimeIndices[i].get({}).getIntegerValue().getSExtValue();
+  return index;
+}
+
+}  // namespace
 
 Tensor evalAbsOp(const Tensor &operand, Type resultType) {
   Tensor result(resultType);
@@ -51,11 +61,10 @@ Tensor evalAndOp(const Tensor &lhs, const Tensor &rhs, Type resultType) {
   return result;
 }
 
-Tensor evalBroadcastInDimOp(const Tensor &operand,
-                            ArrayRef<int64_t> broadcastDimensions,
+Tensor evalBroadcastInDimOp(const Tensor &operand, Axes broadcastDimensions,
                             Type resultType) {
   Tensor result(resultType);
-  auto operandShape = operand.getType().getShape();
+  auto operandShape = operand.getShape();
   for (auto resultIt = result.index_begin(); resultIt != result.index_end();
        ++resultIt) {
     Index operandIdx(operandShape.size());
@@ -78,10 +87,8 @@ Tensor evalClampOp(const Tensor &min, const Tensor &operand, const Tensor &max,
                    Type resultType) {
   Tensor result(resultType);
   for (auto it = result.index_begin(); it != result.index_end(); ++it) {
-    Element minElement =
-        min.getType().getRank() != 0 ? min.get(*it) : min.get({});
-    Element maxElement =
-        max.getType().getRank() != 0 ? max.get(*it) : max.get({});
+    Element minElement = min.getRank() != 0 ? min.get(*it) : min.get({});
+    Element maxElement = max.getRank() != 0 ? max.get(*it) : max.get({});
     result.set(*it, stablehlo::min(stablehlo::max(operand.get(*it), minElement),
                                    maxElement));
   }
@@ -96,7 +103,7 @@ Tensor evalConstantOp(ElementsAttr value) {
 // with integer to bool conversion. To be updated as part of #969.
 Tensor evalConvertOp(const Tensor &operand, Type resultType) {
   Tensor result(resultType);
-  Type elType = result.getType().getElementType();
+  Type elType = result.getElementType();
   for (auto it = result.index_begin(); it != result.index_end(); ++it)
     result.set(*it, Element(elType,
                             operand.get(*it).getIntegerValue().getBoolValue()));
@@ -111,17 +118,13 @@ Tensor evalCosineOp(const Tensor &operand, Type resultType) {
 }
 
 Tensor evalDynamicSliceOp(const Tensor &operand, ArrayRef<Tensor> startIndices,
-                          ArrayRef<int64_t> sliceSizes, Type resultType) {
+                          Sizes sliceSizes, Type resultType) {
   Tensor result(resultType);
-  Index adjustedStartIndices(startIndices.size());
-  for (size_t i = 0; i < startIndices.size(); ++i)
-    adjustedStartIndices[i] = std::min(
-        std::max(startIndices[i].get({}).getIntegerValue().getSExtValue(), 0l),
-        operand.getType().getShape()[i] - sliceSizes[i]);
-  for (auto resultItr = result.index_begin(); resultItr != result.index_end();
-       ++resultItr) {
-    auto operandIdx = adjustedStartIndices + *resultItr;
-    result.set(*resultItr, operand.get(operandIdx));
+  auto adjustedStartIndices =
+      clamp(0, evalIndices(startIndices), operand.getShape() - sliceSizes);
+  for (auto resultIt = result.index_begin(); resultIt != result.index_end();
+       ++resultIt) {
+    result.set(*resultIt, operand.get(adjustedStartIndices + *resultIt));
   }
   return result;
 }
@@ -130,13 +133,8 @@ Tensor evalDynamicUpdateSliceOp(const Tensor &operand, const Tensor &update,
                                 ArrayRef<Tensor> startIndices,
                                 Type resultType) {
   Tensor result(resultType);
-  auto operandShape = operand.getType().getShape();
-  auto updateShape = update.getType().getShape();
-  Index adjustedStartIndices(startIndices.size());
-  for (size_t i = 0; i < startIndices.size(); ++i)
-    adjustedStartIndices[i] = std::min(
-        std::max(startIndices[i].get({}).getIntegerValue().getSExtValue(), 0l),
-        operandShape[i] - updateShape[i]);
+  auto adjustedStartIndices = clamp(0, evalIndices(startIndices),
+                                  operand.getShape() - update.getShape());
   for (auto resultIt = result.index_begin(); resultIt != result.index_end();
        ++resultIt)
     result.set(*resultIt, operand.get(*resultIt));
@@ -161,7 +159,7 @@ SmallVector<Tensor> evalIfOp(const Tensor &pred, Region &trueBranch,
 
 Tensor evalIotaOp(int64_t iotaDimension, Type resultType) {
   Tensor result(resultType);
-  Type elType = result.getType().getElementType();
+  Type elType = result.getElementType();
   for (auto it = result.index_begin(); it != result.index_end(); ++it) {
     auto iota = (*it)[iotaDimension];
     if (isSupportedSignedIntegerType(elType)) {
@@ -238,17 +236,15 @@ Tensor evalOrOp(const Tensor &lhs, const Tensor &rhs, Type resultType) {
 }
 
 Tensor evalPadOp(const Tensor &operand, const Tensor &paddingValue,
-                 ArrayRef<int64_t> edgePaddingLow,
-                 ArrayRef<int64_t> interiorPadding, Type resultType) {
+                 Sizes edgePaddingLow, Sizes interiorPadding, Type resultType) {
   Tensor result(resultType);
   for (auto resultIt = result.index_begin(); resultIt != result.index_end();
        ++resultIt)
     result.set(*resultIt, paddingValue.get({}));
   for (auto operandIt = operand.index_begin(); operandIt != operand.index_end();
        ++operandIt) {
-    Index resultIdx =
-        edgePaddingLow + *operandIt * interiorPadding + *operandIt;
-    if (succeeded(verifyIndex(result.getType().getShape(), resultIdx)))
+    auto resultIdx = edgePaddingLow + *operandIt * (interiorPadding + 1);
+    if (resultIdx.inBounds(result.getShape()))
       result.set(resultIdx, operand.get(*operandIt));
   }
   return result;
@@ -262,10 +258,9 @@ Tensor evalReshapeOp(const Tensor &operand, Type resultType) {
   return result;
 }
 
-Tensor evalReverseOp(const Tensor &operand, ArrayRef<int64_t> dimensions,
-                     Type resultType) {
+Tensor evalReverseOp(const Tensor &operand, Axes dimensions, Type resultType) {
   Tensor result(resultType);
-  auto resultShape = result.getType().getShape();
+  auto resultShape = result.getShape();
   for (auto resultIt = result.index_begin(); resultIt != result.index_end();
        ++resultIt) {
     Index operandIdx(*resultIt);
@@ -280,8 +275,7 @@ Tensor evalSelectOp(const Tensor &pred, const Tensor &onTrue,
                     const Tensor &onFalse, Type resultType) {
   Tensor result(resultType);
   for (auto it = result.index_begin(); it != result.index_end(); ++it) {
-    Element predValue =
-        pred.getType().getRank() != 0 ? pred.get(*it) : pred.get({});
+    Element predValue = pred.getRank() != 0 ? pred.get(*it) : pred.get({});
     result.set(
         *it, predValue.getBooleanValue() ? onTrue.get(*it) : onFalse.get(*it));
   }
@@ -295,13 +289,12 @@ Tensor evalSineOp(const Tensor &operand, Type resultType) {
   return result;
 }
 
-Tensor evalSliceOp(const Tensor &operand, ArrayRef<int64_t> startIndices,
-                   ArrayRef<int64_t> strides, Type resultType) {
+Tensor evalSliceOp(const Tensor &operand, Index startIndices, Sizes strides,
+                   Type resultType) {
   Tensor result(resultType);
   for (auto resultIt = result.index_begin(); resultIt != result.index_end();
        ++resultIt) {
-    Index operandIdx = startIndices + *resultIt * strides;
-    result.set(*resultIt, operand.get(operandIdx));
+    result.set(*resultIt, operand.get(startIndices + *resultIt * strides));
   }
   return result;
 }
@@ -320,13 +313,13 @@ Tensor evalTanhOp(const Tensor &operand, Type resultType) {
   return result;
 }
 
-Tensor evalTransposeOp(const Tensor &operand, ArrayRef<int64_t> permutation,
+Tensor evalTransposeOp(const Tensor &operand, const Axes &permutation,
                        Type resultType) {
   Tensor result(resultType);
   for (auto operandIt = operand.index_begin(); operandIt != operand.index_end();
        ++operandIt) {
-    auto resultIndex = (*operandIt).permute(permutation);
-    result.set(resultIndex, operand.get(*operandIt));
+    auto resultIdx = operandIt->permute(permutation);
+    result.set(resultIdx, operand.get(*operandIt));
   }
   return result;
 }
@@ -383,8 +376,8 @@ SmallVector<Tensor> eval(Region &region, ArrayRef<Tensor> args, Scope *parent) {
       scope.add(op.getResults(), {runtimeResult});
     } else if (auto broadcastInDimOp = dyn_cast<BroadcastInDimOp>(op)) {
       Tensor runtimeOperand = scope.find(broadcastInDimOp.getOperand());
-      auto broadcastDimensions = llvm::to_vector(
-          broadcastInDimOp.getBroadcastDimensions().getValues<int64_t>());
+      auto broadcastDimensions =
+          Axes(broadcastInDimOp.getBroadcastDimensions());
       Tensor runtimeResult = evalBroadcastInDimOp(
           runtimeOperand, broadcastDimensions, broadcastInDimOp.getType());
       scope.add(op.getResults(), {runtimeResult});
@@ -413,8 +406,7 @@ SmallVector<Tensor> eval(Region &region, ArrayRef<Tensor> args, Scope *parent) {
     } else if (auto dynamicSliceOp = dyn_cast<DynamicSliceOp>(op)) {
       Tensor runtimeOperand = scope.find(dynamicSliceOp.getOperand());
       auto runtimeStartIndices = scope.find(dynamicSliceOp.getStartIndices());
-      auto runtimeSliceSizes =
-          llvm::to_vector(dynamicSliceOp.getSliceSizes().getValues<int64_t>());
+      auto runtimeSliceSizes = Sizes(dynamicSliceOp.getSliceSizes());
       Tensor runtimeResult =
           evalDynamicSliceOp(runtimeOperand, runtimeStartIndices,
                              runtimeSliceSizes, dynamicSliceOp.getType());
@@ -473,10 +465,8 @@ SmallVector<Tensor> eval(Region &region, ArrayRef<Tensor> args, Scope *parent) {
     } else if (auto padOp = dyn_cast<PadOp>(op)) {
       Tensor runtimeOperand = scope.find(padOp.getOperand());
       Tensor runtimePaddingValue = scope.find(padOp.getPaddingValue());
-      auto edgePaddingLow =
-          llvm::to_vector(padOp.getEdgePaddingLow().getValues<int64_t>());
-      auto interiorPadding =
-          llvm::to_vector(padOp.getInteriorPadding().getValues<int64_t>());
+      auto edgePaddingLow = Sizes(padOp.getEdgePaddingLow());
+      auto interiorPadding = Sizes(padOp.getInteriorPadding());
       Tensor runtimeResult =
           evalPadOp(runtimeOperand, runtimePaddingValue, edgePaddingLow,
                     interiorPadding, padOp.getType());
@@ -494,8 +484,7 @@ SmallVector<Tensor> eval(Region &region, ArrayRef<Tensor> args, Scope *parent) {
       scope.add(op.getResults(), {runtimeResult});
     } else if (auto reverseOp = dyn_cast<ReverseOp>(op)) {
       Tensor runtimeOperand = scope.find(reverseOp.getOperand());
-      auto dimensions =
-          llvm::to_vector(reverseOp.getDimensions().getValues<int64_t>());
+      auto dimensions = Axes(reverseOp.getDimensions());
       Tensor runtimeResult =
           evalReverseOp(runtimeOperand, dimensions, reverseOp.getType());
       scope.add(op.getResults(), {runtimeResult});
@@ -514,9 +503,8 @@ SmallVector<Tensor> eval(Region &region, ArrayRef<Tensor> args, Scope *parent) {
       scope.add(op.getResults(), {runtimeResult});
     } else if (auto sliceOp = dyn_cast<SliceOp>(op)) {
       Tensor runtimeOperand = scope.find(sliceOp.getOperand());
-      auto startIndices =
-          llvm::to_vector(sliceOp.getStartIndices().getValues<int64_t>());
-      auto strides = llvm::to_vector(sliceOp.getStrides().getValues<int64_t>());
+      auto startIndices = Index(sliceOp.getStartIndices());
+      auto strides = Sizes(sliceOp.getStrides());
       Tensor runtimeResult =
           evalSliceOp(runtimeOperand, startIndices, strides, sliceOp.getType());
       scope.add(op.getResults(), {runtimeResult});
@@ -532,8 +520,7 @@ SmallVector<Tensor> eval(Region &region, ArrayRef<Tensor> args, Scope *parent) {
       scope.add(op.getResults(), {runtimeResult});
     } else if (auto transposeOp = dyn_cast<TransposeOp>(op)) {
       Tensor runtimeOperand = scope.find(transposeOp.getOperand());
-      auto permutation =
-          llvm::to_vector(transposeOp.getPermutation().getValues<int64_t>());
+      auto permutation = Axes(transposeOp.getPermutation());
       Tensor runtimeResult =
           evalTransposeOp(runtimeOperand, permutation, transposeOp.getType());
       scope.add(op.getResults(), {runtimeResult});

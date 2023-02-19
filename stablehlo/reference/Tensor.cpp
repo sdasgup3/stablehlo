@@ -46,8 +46,8 @@ int64_t getSizeInBytes(Type type) {
 
 // Flattens multi-dimensional index 'index' of a tensor to a linearized index
 // into the underlying storage where elements are laid out in canonical order.
-int64_t flattenIndex(ArrayRef<int64_t> shape, const Index &index) {
-  if (failed(verifyIndex(shape, index)))
+int64_t flattenIndex(const Sizes &shape, const Index &index) {
+  if (!index.inBounds(shape))
     llvm::report_fatal_error(
         "Incompatible index and shape found while flattening index");
 
@@ -75,31 +75,29 @@ int64_t flattenIndex(ArrayRef<int64_t> shape, const Index &index) {
 
 namespace detail {
 
-Buffer::Buffer(ShapedType type)
+Buffer::Buffer(RankedTensorType type)
     : type_(type),
       blob_(
           HeapAsmResourceBlob::allocate(getSizeInBytes(type), alignof(char))) {}
 
-Buffer::Buffer(ShapedType type, AsmResourceBlob blob)
+Buffer::Buffer(RankedTensorType type, AsmResourceBlob blob)
     : type_(type), blob_(std::move(blob)) {}
 
 }  // namespace detail
 
 Tensor::Tensor() {}
 
-Tensor::Tensor(ShapedType type)
+Tensor::Tensor(RankedTensorType type)
     : impl_(llvm::makeIntrusiveRefCnt<detail::Buffer>(type)) {}
 
-Tensor::Tensor(ShapedType type, AsmResourceBlob blob)
+Tensor::Tensor(RankedTensorType type, AsmResourceBlob blob)
     : impl_(llvm::makeIntrusiveRefCnt<detail::Buffer>(type, std::move(blob))) {}
-
-int64_t Tensor::getNumElements() const { return getType().getNumElements(); }
 
 Element Tensor::get(const Index &index) const {
   Type elementType = getType().getElementType();
   const char *elementPtr =
       impl_->getData().data() +
-      getSizeInBytes(elementType) * flattenIndex(getType().getShape(), index);
+      getSizeInBytes(elementType) * flattenIndex(getShape(), index);
 
   // Handle floating-point types.
   if (elementType.isF16()) {
@@ -206,7 +204,7 @@ void Tensor::set(const Index &index, const Element &element) {
   Type elementType = getType().getElementType();
   char *elementPtr =
       impl_->getMutableData().data() +
-      getSizeInBytes(elementType) * flattenIndex(getType().getShape(), index);
+      getSizeInBytes(elementType) * flattenIndex(getShape(), index);
 
   // Handle floating-point types.
   if (elementType.isF16() || elementType.isBF16()) {
@@ -325,23 +323,18 @@ void Tensor::set(const Index &index, const Element &element) {
                                      debugString(elementType).c_str()));
 }
 
-void Tensor::set(ArrayRef<int64_t> index, const Element &element) {
-  set(Index(index), element);
-}
-
 IndexSpaceIterator Tensor::index_begin() const {
-  auto shape = getType().getShape();
+  auto shape = getShape();
 
   if (any_of(shape, [](int64_t dimSize) { return dimSize == 0; }))
-    return IndexSpaceIterator(shape, {});
+    return IndexSpaceIterator(shape, std::nullopt);
 
-  SmallVector<int64_t> index(shape.size());
+  Index index(shape.size());
   return IndexSpaceIterator(shape, index);
 }
 
 IndexSpaceIterator Tensor::index_end() const {
-  auto shape = getType().getShape();
-  return IndexSpaceIterator(shape, {});
+  return IndexSpaceIterator(getShape(), std::nullopt);
 }
 
 void Tensor::print(raw_ostream &os) const {
@@ -357,7 +350,7 @@ void Tensor::print(raw_ostream &os) const {
 void Tensor::dump() const { print(llvm::errs()); }
 
 Tensor makeTensor(DenseElementsAttr attr) {
-  auto type = attr.getType();
+  auto type = attr.getType().cast<RankedTensorType>();
   auto elemType = type.getElementType();
 
   // Handle floating-point types.
