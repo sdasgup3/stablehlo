@@ -27,7 +27,7 @@ limitations under the License.
 #include "mlir/IR/BuiltinTypes.h"
 #include "stablehlo/reference/Element.h"
 #include "stablehlo/reference/Index.h"
-#include "stablehlo/reference/Prototype.h"
+#include "stablehlo/reference/Sizes.h"
 
 namespace mlir {
 namespace stablehlo {

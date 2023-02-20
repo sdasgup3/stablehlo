@@ -13,10 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-// TODO: Come up with a better filename.
-// TODO: Add to the Bazel build.
-#ifndef STABLEHLO_REFERENCE_PROTOTYPE_H
-#define STABLEHLO_REFERENCE_PROTOTYPE_H
+#ifndef STABLEHLO_REFERENCE_SIZES_H
+#define STABLEHLO_REFERENCE_SIZES_H
 
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Support/raw_ostream.h"
@@ -25,27 +23,23 @@ limitations under the License.
 namespace mlir {
 namespace stablehlo {
 
-class Axes : public SmallVector<int64_t> {
- public:
-  Axes(std::initializer_list<int64_t> list) : SmallVector(list) {}
-  explicit Axes(ArrayRef<int64_t> array) : SmallVector(array) {}
-  explicit Axes(DenseIntElementsAttr attr)
-      : SmallVector(attr.getValues<int64_t>()) {}
-};
-
 class Sizes : public SmallVector<int64_t> {
  public:
+  Sizes() = default;
+  Sizes(const Sizes &other) = default;
+  Sizes &operator=(const Sizes &other) = default;
+
   Sizes(std::initializer_list<int64_t> list) : SmallVector(list) {}
   explicit Sizes(size_t size, int64_t element = 0)
       : SmallVector(size, element) {}
   explicit Sizes(ArrayRef<int64_t> array) : SmallVector(array) {}
   explicit Sizes(DenseIntElementsAttr attr)
       : SmallVector(attr.getValues<int64_t>()) {}
+
   Sizes permute(ArrayRef<int64_t> permutation) const;
   bool inBounds(const Sizes &bounds) const;
 };
 
-raw_ostream &operator<<(raw_ostream &os, const Axes &x);
 raw_ostream &operator<<(raw_ostream &os, const Sizes &x);
 
 Sizes operator+(const Sizes &x, const Sizes &y);
@@ -60,9 +54,12 @@ Sizes operator*(const Sizes &x, const Sizes &y);
 Sizes operator*(const Sizes &x, int64_t y);
 Sizes operator*(int64_t x, const Sizes &y);
 
-Sizes clamp(ArrayRef<int64_t> min, const Sizes &x, ArrayRef<int64_t> max);
+Sizes clamp(int64_t min, const Sizes &x, int64_t max);
+Sizes clamp(int64_t min, const Sizes &x, const Sizes &max);
+Sizes clamp(const Sizes &min, const Sizes &x, int64_t max);
+Sizes clamp(const Sizes &min, const Sizes &x, const Sizes &max);
 
 }  // namespace stablehlo
 }  // namespace mlir
 
-#endif  // STABLEHLO_REFERENCE_PROTOTYPE_H
+#endif  // STABLEHLO_REFERENCE_SIZES_H

@@ -19,7 +19,7 @@ limitations under the License.
 #include <optional>
 
 #include "llvm/Support/Error.h"
-#include "stablehlo/reference/Prototype.h"
+#include "stablehlo/reference/Sizes.h"
 
 namespace mlir {
 namespace stablehlo {

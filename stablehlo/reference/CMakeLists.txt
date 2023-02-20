@@ -12,6 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+add_mlir_library(StablehloReferenceAxes
+  PARTIAL_SOURCES_INTENDED
+  Sizes.cpp
+
+  LINK_LIBS PUBLIC
+  MLIRIR
+)
+
+add_mlir_library(StablehloReferenceSizes
+  PARTIAL_SOURCES_INTENDED
+  Sizes.cpp
+
+  LINK_LIBS PUBLIC
+  MLIRIR
+)
+
 add_mlir_library(StablehloReferenceTypes
   PARTIAL_SOURCES_INTENDED
   Types.cpp
@@ -37,15 +53,7 @@ add_mlir_library(StablehloReferenceIndex
   LINK_LIBS PUBLIC
   MLIRIR
   MLIRSupport
-  StablehloReferencePrototype
-)
-
-add_mlir_library(StablehloReferencePrototype
-  PARTIAL_SOURCES_INTENDED
-  Prototype.cpp
-
-  LINK_LIBS PUBLIC
-  MLIRIR
+  StablehloReferenceSizes
 )
 
 add_mlir_library(StablehloReferenceScope
@@ -65,7 +73,7 @@ add_mlir_library(StablehloReferenceTensor
   MLIRIR
   StablehloReferenceElement
   StablehloReferenceIndex
-  StablehloReferencePrototype
+  StablehloReferenceSizes
   StablehloReferenceTypes
 )
 
@@ -76,9 +84,10 @@ add_mlir_library(StablehloReferenceOps
   LINK_LIBS PUBLIC
   MLIRFuncDialect
   StablehloOps
+  StablehloReferenceAxes
   StablehloReferenceElement
   StablehloReferenceIndex
-  StablehloReferencePrototype
   StablehloReferenceScope
+  StablehloReferenceSizes
   StablehloReferenceTensor
 )

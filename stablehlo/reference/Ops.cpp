@@ -133,7 +133,7 @@ Tensor evalDynamicUpdateSliceOp(const Tensor &operand, const Tensor &update,
                                 Type resultType) {
   Tensor result(resultType);
   auto adjustedStartIndices = clamp(0, evalIndices(startIndices),
-                                  operand.getShape() - update.getShape());
+                                    operand.getShape() - update.getShape());
   for (auto resultIt = result.index_begin(); resultIt != result.index_end();
        ++resultIt)
     result.set(*resultIt, operand.get(*resultIt));
@@ -243,6 +243,8 @@ Tensor evalPadOp(const Tensor &operand, const Tensor &paddingValue,
   for (auto operandIt = operand.index_begin(); operandIt != operand.index_end();
        ++operandIt) {
     auto resultIdx = edgePaddingLow + *operandIt * (interiorPadding + 1);
+    // Bound check is needed here because of negative padding which could
+    // swallow some operand indices.
     if (resultIdx.inBounds(result.getShape()))
       result.set(resultIdx, operand.get(*operandIt));
   }

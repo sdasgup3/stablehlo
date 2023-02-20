@@ -18,8 +18,9 @@ limitations under the License.
 
 #include "mlir/IR/BuiltinAttributes.h"
 #include "stablehlo/dialect/StablehloOps.h"
-#include "stablehlo/reference/Prototype.h"
+#include "stablehlo/reference/Axes.h"
 #include "stablehlo/reference/Scope.h"
+#include "stablehlo/reference/Sizes.h"
 #include "stablehlo/reference/Tensor.h"
 
 namespace mlir {
@@ -44,7 +45,7 @@ Tensor evalDynamicUpdateSliceOp(const Tensor &operand, const Tensor &update,
 Tensor evalFloorOp(const Tensor &operand, Type resultType);
 SmallVector<Tensor> evalIfOp(const Tensor &pred, Region &trueBranch,
                              Region &falseBranch, Scope &scope);
-Tensor evalIotaOp(int64_t iotaDimension, Type resultType);
+Tensor evalIotaOp(Axis iotaDimension, Type resultType);
 Tensor evalMaxOp(const Tensor &lhs, const Tensor &rhs, Type resultType);
 Tensor evalMinOp(const Tensor &lhs, const Tensor &rhs, Type resultType);
 Tensor evalMultiplyOp(const Tensor &lhs, const Tensor &rhs, Type resultType);
