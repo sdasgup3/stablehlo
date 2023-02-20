@@ -58,7 +58,7 @@ Tensor evalReverseOp(const Tensor &operand, Axes dimensions, Type resultType);
 Tensor evalSelectOp(const Tensor &pred, const Tensor &onTrue,
                     const Tensor &onFalse, Type resultType);
 Tensor evalSineOp(const Tensor &operand, Type resultType);
-Tensor evalSliceOp(const Tensor &operand, Index startIndices, Sizes strides,
+Tensor evalSliceOp(const Tensor &operand, Sizes startIndices, Sizes strides,
                    Type resultType);
 Tensor evalSubtractOp(const Tensor &lhs, const Tensor &rhs, Type resultType);
 Tensor evalTanhOp(const Tensor &operand, Type resultType);

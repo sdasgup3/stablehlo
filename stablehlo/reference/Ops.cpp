@@ -24,15 +24,14 @@ limitations under the License.
 #include "mlir/Support/DebugStringHelper.h"
 #include "stablehlo/reference/Element.h"
 #include "stablehlo/reference/Errors.h"
-#include "stablehlo/reference/Index.h"
 #include "stablehlo/reference/Types.h"
 
 namespace mlir {
 namespace stablehlo {
 namespace {
 
-Index evalIndices(ArrayRef<Tensor> runtimeIndices) {
-  Index index(runtimeIndices.size());
+Sizes evalIndices(ArrayRef<Tensor> runtimeIndices) {
+  Sizes index(runtimeIndices.size());
   for (size_t i = 0; i < runtimeIndices.size(); ++i)
     index[i] = runtimeIndices[i].get({}).getIntegerValue().getSExtValue();
   return index;
@@ -67,7 +66,7 @@ Tensor evalBroadcastInDimOp(const Tensor &operand, Axes broadcastDimensions,
   auto operandShape = operand.getShape();
   for (auto resultIt = result.index_begin(); resultIt != result.index_end();
        ++resultIt) {
-    Index operandIdx(operandShape.size());
+    Sizes operandIdx(operandShape.size());
     for (auto [operandDim, resultDim] : llvm::enumerate(broadcastDimensions))
       operandIdx[operandDim] =
           operandShape[operandDim] == 1 ? 0 : (*resultIt)[resultDim];
@@ -263,7 +262,7 @@ Tensor evalReverseOp(const Tensor &operand, Axes dimensions, Type resultType) {
   auto resultShape = result.getShape();
   for (auto resultIt = result.index_begin(); resultIt != result.index_end();
        ++resultIt) {
-    Index operandIdx(*resultIt);
+    Sizes operandIdx(*resultIt);
     for (auto dim : dimensions)
       operandIdx[dim] = (resultShape[dim] - 1) - operandIdx[dim];
     result.set(*resultIt, operand.get(operandIdx));
@@ -289,7 +288,7 @@ Tensor evalSineOp(const Tensor &operand, Type resultType) {
   return result;
 }
 
-Tensor evalSliceOp(const Tensor &operand, Index startIndices, Sizes strides,
+Tensor evalSliceOp(const Tensor &operand, Sizes startIndices, Sizes strides,
                    Type resultType) {
   Tensor result(resultType);
   for (auto resultIt = result.index_begin(); resultIt != result.index_end();
@@ -503,7 +502,7 @@ SmallVector<Tensor> eval(Region &region, ArrayRef<Tensor> args, Scope *parent) {
       scope.add(op.getResults(), {runtimeResult});
     } else if (auto sliceOp = dyn_cast<SliceOp>(op)) {
       Tensor runtimeOperand = scope.find(sliceOp.getOperand());
-      auto startIndices = Index(sliceOp.getStartIndices());
+      auto startIndices = Sizes(sliceOp.getStartIndices());
       auto strides = Sizes(sliceOp.getStrides());
       Tensor runtimeResult =
           evalSliceOp(runtimeOperand, startIndices, strides, sliceOp.getType());

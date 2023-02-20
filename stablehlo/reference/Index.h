@@ -16,13 +16,9 @@ limitations under the License.
 #ifndef STABLEHLO_REFERENCE_INDEX_H_
 #define STABLEHLO_REFERENCE_INDEX_H_
 
-#include <cstdint>
 #include <optional>
 
-#include "llvm/ADT/ArrayRef.h"
-#include "llvm/ADT/SmallVector.h"
 #include "llvm/Support/Error.h"
-#include "mlir/Support/LogicalResult.h"
 #include "stablehlo/reference/Prototype.h"
 
 namespace mlir {
@@ -36,7 +32,7 @@ namespace stablehlo {
 class IndexSpaceIterator {
  public:
   /// \name Constructor
-  IndexSpaceIterator(Sizes shape, std::optional<Index> index)
+  IndexSpaceIterator(Sizes shape, std::optional<Sizes> index)
       : shape_(shape), index_(index) {
     if (index && !index->inBounds(shape))
       llvm::report_fatal_error(
@@ -48,8 +44,8 @@ class IndexSpaceIterator {
   /// At any point in time, the iterator can either reference an actual index
   /// or the past-the-end element in the index space.
   /// Dereferencing a past-the-end iterator will result in a fatal error.
-  const Index &operator*() const;
-  const Index *operator->() const;
+  const Sizes &operator*() const;
+  const Sizes *operator->() const;
 
   /// Compare the iterator to another iterator.
   /// Two iterators are equal if they have the same underlying shape and
@@ -73,7 +69,7 @@ class IndexSpaceIterator {
 
   /// Current multi-dimensional index.
   /// If the optional is empty, then we're at the end
-  std::optional<Index> index_;
+  std::optional<Sizes> index_;
 };
 
 }  // namespace stablehlo

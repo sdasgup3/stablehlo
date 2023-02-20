@@ -15,18 +15,16 @@ limitations under the License.
 
 #include "stablehlo/reference/Index.h"
 
-#include "llvm/Support/Error.h"
-
 namespace mlir {
 namespace stablehlo {
 
-const Index &IndexSpaceIterator::operator*() const {
+const Sizes &IndexSpaceIterator::operator*() const {
   if (!index_)
     llvm::report_fatal_error("Dereferencing a past-the-end iterator.");
   return *index_;
 }
 
-const Index *IndexSpaceIterator::operator->() const { return &(*index_); }
+const Sizes *IndexSpaceIterator::operator->() const { return &(*index_); }
 
 IndexSpaceIterator &IndexSpaceIterator::operator++() {
   if (!index_)

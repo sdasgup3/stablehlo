@@ -33,22 +33,6 @@ class Axes : public SmallVector<int64_t> {
       : SmallVector(attr.getValues<int64_t>()) {}
 };
 
-class Sizes;
-class Index : public SmallVector<int64_t> {
- public:
-  Index(std::initializer_list<int64_t> list) : SmallVector(list) {}
-  explicit Index(size_t size, int64_t element = 0)
-      : SmallVector(size, element) {}
-  explicit Index(ArrayRef<int64_t> array) : SmallVector(array) {}
-  explicit Index(DenseIntElementsAttr attr)
-      : SmallVector(attr.getValues<int64_t>()) {}
-  Index permute(ArrayRef<int64_t> permutation) const;
-  bool inBounds(const Sizes &sizes) const;
-};
-
-// TODO: Do we really need both Index and Sizes?
-// I like the additional semantic information, but the duplication burden
-// is significant.
 class Sizes : public SmallVector<int64_t> {
  public:
   Sizes(std::initializer_list<int64_t> list) : SmallVector(list) {}
@@ -58,40 +42,24 @@ class Sizes : public SmallVector<int64_t> {
   explicit Sizes(DenseIntElementsAttr attr)
       : SmallVector(attr.getValues<int64_t>()) {}
   Sizes permute(ArrayRef<int64_t> permutation) const;
+  bool inBounds(const Sizes &bounds) const;
 };
 
 raw_ostream &operator<<(raw_ostream &os, const Axes &x);
-raw_ostream &operator<<(raw_ostream &os, const Index &x);
 raw_ostream &operator<<(raw_ostream &os, const Sizes &x);
 
-Index operator+(const Index &x, const Index &y);
-Index operator+(const Index &x, const Sizes &y);
-Index operator+(const Index &x, int64_t y);
-Index operator+(const Sizes &x, const Index &y);
 Sizes operator+(const Sizes &x, const Sizes &y);
 Sizes operator+(const Sizes &x, int64_t y);
-Index operator+(int64_t x, const Index &y);
 Sizes operator+(int64_t x, const Sizes &y);
 
-Index operator-(const Index &x, const Index &y);
-Index operator-(const Index &x, const Sizes &y);
-Index operator-(const Index &x, int64_t y);
-Index operator-(const Sizes &x, const Index &y);
 Sizes operator-(const Sizes &x, const Sizes &y);
 Sizes operator-(const Sizes &x, int64_t y);
-Index operator-(int64_t x, const Index &y);
 Sizes operator-(int64_t x, const Sizes &y);
 
-Index operator*(const Index &x, const Index &y);
-Index operator*(const Index &x, const Sizes &y);
-Index operator*(const Index &x, int64_t y);
-Index operator*(const Sizes &x, const Index &y);
 Sizes operator*(const Sizes &x, const Sizes &y);
 Sizes operator*(const Sizes &x, int64_t y);
-Index operator*(int64_t x, const Index &y);
 Sizes operator*(int64_t x, const Sizes &y);
 
-Index clamp(ArrayRef<int64_t> min, const Index &x, ArrayRef<int64_t> max);
 Sizes clamp(ArrayRef<int64_t> min, const Sizes &x, ArrayRef<int64_t> max);
 
 }  // namespace stablehlo

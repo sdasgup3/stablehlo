@@ -18,10 +18,10 @@ limitations under the License.
 #include <complex>
 
 #include "llvm/ADT/APFloat.h"
+#include "llvm/ADT/APInt.h"
 #include "llvm/Support/Error.h"
 #include "mlir/Support/DebugStringHelper.h"
 #include "stablehlo/reference/Errors.h"
-#include "stablehlo/reference/Index.h"
 #include "stablehlo/reference/Types.h"
 
 namespace mlir {
@@ -46,7 +46,7 @@ int64_t getSizeInBytes(Type type) {
 
 // Flattens multi-dimensional index 'index' of a tensor to a linearized index
 // into the underlying storage where elements are laid out in canonical order.
-int64_t flattenIndex(const Sizes &shape, const Index &index) {
+int64_t flattenIndex(const Sizes &shape, const Sizes &index) {
   if (!index.inBounds(shape))
     llvm::report_fatal_error(
         "Incompatible index and shape found while flattening index");
@@ -93,7 +93,7 @@ Tensor::Tensor(RankedTensorType type)
 Tensor::Tensor(RankedTensorType type, AsmResourceBlob blob)
     : impl_(llvm::makeIntrusiveRefCnt<detail::Buffer>(type, std::move(blob))) {}
 
-Element Tensor::get(const Index &index) const {
+Element Tensor::get(const Sizes &index) const {
   Type elementType = getType().getElementType();
   const char *elementPtr =
       impl_->getData().data() +
@@ -200,7 +200,7 @@ Element Tensor::get(const Index &index) const {
                                      debugString(elementType).c_str()));
 }
 
-void Tensor::set(const Index &index, const Element &element) {
+void Tensor::set(const Sizes &index, const Element &element) {
   Type elementType = getType().getElementType();
   char *elementPtr =
       impl_->getMutableData().data() +
@@ -329,8 +329,8 @@ IndexSpaceIterator Tensor::index_begin() const {
   if (any_of(shape, [](int64_t dimSize) { return dimSize == 0; }))
     return IndexSpaceIterator(shape, std::nullopt);
 
-  Index index(shape.size());
-  return IndexSpaceIterator(shape, index);
+  Sizes initialIndex(shape.size());
+  return IndexSpaceIterator(shape, initialIndex);
 }
 
 IndexSpaceIterator Tensor::index_end() const {
