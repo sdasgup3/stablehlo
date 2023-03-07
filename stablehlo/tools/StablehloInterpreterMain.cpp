@@ -48,16 +48,14 @@ llvm::Error evalCustomCallCheckEq(stablehlo::CustomCallOp op,
     return stablehlo::invalidArgument("Unsupported op: %s",
                                       debugString(op).c_str());
   }
-  stablehlo::Tensor actualResult = scope.find(op->getOperands())[0];
-  auto expectedOp =
-      dyn_cast<stablehlo::ConstantOp>(op->getOperands()[1].getDefiningOp());
-
+  auto actualResult = scope.find(op->getOperands())[0];
+  auto expectedResult = scope.find(op->getOperands())[1];
   // TODO: Need to handle complex types.
-  bool isInt = expectedOp.getType().getElementType().isa<IntegerType>();
-  auto expectedResult = expectedOp.getValue();
+  bool isInt = expectedResult.getElementType().isa<IntegerType>();
   auto status =
-      isInt ? stablehlo::check::evalEqOp(actualResult, expectedResult)
-            : stablehlo::check::evalAlmostEqOp(actualResult, expectedResult);
+      isInt ? stablehlo::check::evalExpectEqOp(actualResult, expectedResult)
+            : stablehlo::check::evalExpectAlmostEqOp(actualResult,
+                                                     expectedResult);
   if (status)
     return stablehlo::invalidArgument(
         "Error evaluating function: %s. \n\tCheck almost_eq failed: "
@@ -79,10 +77,10 @@ llvm::Error interpreterFallback(Operation &op, stablehlo::Scope &scope,
   }
 
   // check.almost_eq implementation
-  if (auto almostEqOp = dyn_cast<stablehlo::check::AlmostEqOp>(op)) {
+  if (auto almostEqOp = dyn_cast<stablehlo::check::ExpectAlmostEqConstOp>(op)) {
     stablehlo::Tensor runtimeOperand = scope.find(almostEqOp.getLhs());
-    auto status =
-        stablehlo::check::evalAlmostEqOp(runtimeOperand, almostEqOp.getValue());
+    auto status = stablehlo::check::evalExpectAlmostEqConstOp(
+        runtimeOperand, almostEqOp.getValue());
     if (status)
       return stablehlo::invalidArgument(
           "Error evaluating function: %s. \n\tCheck almost_eq failed: "
@@ -92,9 +90,10 @@ llvm::Error interpreterFallback(Operation &op, stablehlo::Scope &scope,
   }
 
   // check.eq implementation
-  if (auto eqOp = dyn_cast<stablehlo::check::EqOp>(op)) {
+  if (auto eqOp = dyn_cast<stablehlo::check::ExpectEqConstOp>(op)) {
     stablehlo::Tensor runtimeOperand = scope.find(eqOp.getLhs());
-    auto status = stablehlo::check::evalEqOp(runtimeOperand, eqOp.getValue());
+    auto status =
+        stablehlo::check::evalExpectEqConstOp(runtimeOperand, eqOp.getValue());
     if (status)
       return stablehlo::invalidArgument(
           "Error evaluating function: %s. \n\tCheck eq failed: %s",
