@@ -1,5 +1,4 @@
 // RUN: stablehlo-opt --mlir-print-op-generic %s.bc | FileCheck %s
-// RUN: stablehlo-translate --deserialize %s.bc | stablehlo-translate --serialize --target=0.9.0 | stablehlo-opt --mlir-print-op-generic | FileCheck %s
 // RUN: diff <(stablehlo-translate --deserialize %s.bc | stablehlo-opt) <(stablehlo-opt %s)
 
 // ============ ATTRIBUTES ============

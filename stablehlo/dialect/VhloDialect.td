@@ -27,7 +27,8 @@ def VHLO_Dialect : Dialect {
     serialization/deserialization.
 
     Version log:
-      0.9.0: Initial stability guarantees.
+      0.9.0: Provides initial stability guarantees.
+      0.9.1: Deprecates window_reversal attribute.
   }];
 
   let useDefaultAttributePrinterParser = 0;

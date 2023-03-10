@@ -766,6 +766,11 @@ class StablehloToVhloOpConverter : public OpConversionPattern<StablehloOpTy> {
       return failure();
     }
 
+    // Remove 'window_reversal' attr (#1181)
+    if constexpr (std::is_same<StablehloOpTy, DynamicConvOp>::value ||
+                  std::is_same<StablehloOpTy, ConvolutionOp>::value)
+      if (stablehloOp->hasAttr("window_reversal")) return failure();
+
     // These operands have already been converted to VHLO by
     // the dialect conversion infrastructure.
     ValueRange vhloOperands = adaptor.getOperands();
