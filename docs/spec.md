@@ -3375,23 +3375,34 @@ Performs element-wise product of two tensors `lhs` and `rhs` and produces a
 * For integers: integer multiplication.
 * For floats: `multiplication` from IEEE-754.
 * For complex numbers: complex multiplication.
+* For quantized types:
+  * `float_result = (lhs - zero_point(lhs)) * scale(lhs) *
+    (rhs - zero_point(rhs)) * scale(rhs)`.
+  * `rounded_result = round_nearest_even(float_result / scale(result))`.
+  * `result = clamp(storage_min(result), rounded_result + zero_point(result), storage_max(result))`.
 
 #### Inputs
 
-| Label | Name  | Type   | Constraints |
-|-------|-------|--------|-------------|
-| (I1)  | `lhs` | tensor | (C1)        |
-| (I2)  | `rhs` | tensor | (C1)        |
+| Label | Name  | Type                       | Constraints |
+|-------|-------|----------------------------|-------------|
+| (I1)  | `lhs` | tensor or quantized tensor | (C1-C5)     |
+| (I2)  | `rhs` | tensor or quantized tensor | (C1-C2)     |
 
 #### Outputs
 
-| Name     | Type   | Constraints |
-|----------|--------|-------------|
-| `result` | tensor | (C1)        |
+| Name     | Type                       | Constraints |
+|----------|----------------------------|-------------|
+| `result` | tensor or quantized tensor | (C1-C2)     |
 
 #### Constraints
 
 * (C1) `lhs`, `rhs` and `result` have the same type.
+* If the operation uses quantized types:
+  * (C2) `element_type(lhs) = element_type(rhs) = element_type(result)`,
+    except for scales and zero points which may differ.
+  * (C3) `storage_min(lhs) = min_value(storage_type)`.
+  * (C4) `storage_max(lhs) = max_value(storage_type)`.
+  * (C5) `quantization_dimension(lhs)` is empty.
 
 #### Examples
 
