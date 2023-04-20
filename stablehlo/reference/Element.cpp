@@ -170,7 +170,12 @@ bool areApproximatelyEqual(APFloat f, APFloat g) {
 
   // Both f and g are finite (zero, subnormal, or normal) values.
   if (f.isNegative() != g.isNegative()) return false;
-  return std::fabs(f.convertToDouble() - g.convertToDouble()) <= 0.0001;
+
+  if (&f.getSemantics() == &llvm::APFloat::IEEEhalf() ||
+      &f.getSemantics() == &llvm::APFloat::BFloat())
+    return std::fabs(f.convertToDouble() - g.convertToDouble()) <= 0.001;
+  else
+    return std::fabs(f.convertToDouble() - g.convertToDouble()) <= 0.0001;
 }
 
 }  // namespace
