@@ -4316,16 +4316,16 @@ and produces a `result` tensor. More formally,
 
 #### Inputs
 
-| Label | Name         | Type                                         | Constraints |
-|-------|--------------|----------------------------------------------|-------------|
-| (I1)  | `operand`    | tensor                                       | (C1)        |
-| (I2)  | `dimensions` | 1-dimensional tensor constant of type `si64` | (C2), (C3)  |
+| Label | Name         | Type                                         | Constraints      |
+|-------|--------------|----------------------------------------------|------------------|
+| (I1)  | `operand`    | tensor   or quantized tensor                 | (C3-C8)          |
+| (I2)  | `dimensions` | 1-dimensional tensor constant of type `si64` | (C1-C2), (C7-C8) |
 
 #### Outputs
 
-| Name     | Type   | Constraints |
-|----------|--------|-------------|
-| `result` | tensor | (C1), (C3)  |
+| Name     | Type                       | Constraints |
+|----------|----------------------------|-------------|
+| `result` | tensor or quantized tensor | (C2-C8)     |
 
 #### Constraints
 
