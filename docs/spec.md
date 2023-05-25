@@ -4318,7 +4318,7 @@ and produces a `result` tensor. More formally,
 
 | Label | Name         | Type                                         | Constraints      |
 |-------|--------------|----------------------------------------------|------------------|
-| (I1)  | `operand`    | tensor   or quantized tensor                 | (C3-C8)          |
+| (I1)  | `operand`    | tensor or quantized tensor                   | (C3-C8)          |
 | (I2)  | `dimensions` | 1-dimensional tensor constant of type `si64` | (C1-C2), (C7-C8) |
 
 #### Outputs
