@@ -3654,20 +3654,21 @@ More formally, `result[result_index]` is defined as:
 
 | Label | Name                | Type                                         | Constraints   |
 |-------|---------------------|----------------------------------------------|---------------|
-| (I1)  | `operand`           | tensor or quantized tensor                   | (C1), (C3-C6) |
-| (I2)  | `padding_value`     | 0-dimensional tensor or quantized tensor     | (C4)          |
+| (I1)  | `operand`           | tensor or quantized tensor                   | (C1), (C3-C7) |
+| (I2)  | `padding_value`     | 0-dimensional tensor or quantized tensor     | (C4-C6)       |
 | (I3)  | `edge_padding_low`  | 1-dimensional tensor constant of type `si64` | (C1), (C3)    |
 | (I4)  | `edge_padding_high` | 1-dimensional tensor constant of type `si64` | (C1), (C3)    |
 | (I5)  | `interior_padding`  | 1-dimensional tensor constant of type `si64` | (C1-C3)       |
 
 #### Outputs
 
-| Name     | Type                       | Constraints   |
-|----------|----------------------------|---------------|
-| `result` | tensor or quantized tensor | (C3-C4), (C6) |
+| Name     | Type                       | Constraints |
+|----------|----------------------------|-------------|
+| `result` | tensor or quantized tensor | (C3-C6)     |
 
 #### Constraints
 
+<<<<<<< HEAD
 * (C1) `element_type(operand) = element_type(padding_value) =
   element_type(result)`.
 * (C2) `size(edge_padding_low) = size(edge_padding_high) =
@@ -3675,6 +3676,25 @@ More formally, `result[result_index]` is defined as:
 * (C3) `0 <= interior_padding`.
 * (C4) `shape(result) = shape(operand) + edge_padding_low +
   max(shape(operand) - 1, 0) * interior_padding + edge_padding_high`.
+=======
+<!-- markdownlint-disable line-length -->
+* (C1) `edge_padding_low`, `edge_padding_high`, `interior_padding` have the
+size equal to `operand`'s rank.
+* (C2) 0 $\le$ `interior_padding[i]` for all `i` values in `interior_padding`.
+* (C3) 0 $\le$ `dim(result, i)` for all `i`th dimension of `operand`, where
+`dim(result, i) = di + max(di - 1, 0) * interior_padding[i] + edge_padding_low[i] + edge_padding_high[i]`
+and `di = dim(operand, i)`.
+* (C4) If the operation uses non-quantized tensors, then `operand`,
+  `padding_value` and `result` have the same element type.
+* If the operation uses quantized tensors:
+  * (C5) `is_quantized_tensor(operand) and is_quantized_tensor(padding_value)
+    and is_quantized_tensor(result)`.
+  * (C6) `quantized_element_type(operand) =
+    quantized_element_type(padding_value) = quantized_element_type(result)`.
+  * (C7) `is_empty(quantization_dimension(operand))`.
+
+<!-- markdownlint-enable line-length -->
+>>>>>>> f4d5db4b (enforce per-tensor quantization scheme)
 
 #### Examples
 
@@ -4316,16 +4336,16 @@ and produces a `result` tensor. More formally,
 
 #### Inputs
 
-| Label | Name         | Type                                         | Constraints      |
-|-------|--------------|----------------------------------------------|------------------|
-| (I1)  | `operand`    | tensor or quantized tensor                   | (C3-C8)          |
-| (I2)  | `dimensions` | 1-dimensional tensor constant of type `si64` | (C1-C2), (C7-C8) |
+| Label | Name         | Type                                         | Constraints   |
+|-------|--------------|----------------------------------------------|---------------|
+| (I1)  | `operand`    | tensor or quantized tensor                   | (C1), (C4-C5) |
+| (I2)  | `dimensions` | 1-dimensional tensor constant of type `si64` | (C2-C3)       |
 
 #### Outputs
 
-| Name     | Type                       | Constraints |
-|----------|----------------------------|-------------|
-| `result` | tensor or quantized tensor | (C2-C8)     |
+| Name     | Type                       | Constraints   |
+|----------|----------------------------|---------------|
+| `result` | tensor or quantized tensor | (C1), (C3-C4) |
 
 #### Constraints
 
@@ -5125,6 +5145,7 @@ More formally, `result[result_index] = operand[operand_index]` where
 
 | Label | Name            | Type                                         | Constraints      |
 |-------|-----------------|----------------------------------------------|------------------|
+<<<<<<< HEAD
 | (I1)  | `operand`       | tensor or per-tensor quantized tensor        | (C1-C3), (C5)    |
 | (I2)  | `start_indices` | 1-dimensional tensor constant of type `si64` | (C2), (C3), (C5) |
 | (I3)  | `limit_indices` | 1-dimensional tensor constant of type `si64` | (C2), (C3), (C5) |
@@ -5144,6 +5165,35 @@ More formally, `result[result_index] = operand[operand_index]` where
 * (C3) `0 <= start_indices <= limit_indices <= shape(operand)`.
 * (C4) `0 < strides`.
 * (C5) `shape(result) = ceil((limit_indices - start_indices) / strides)`.
+=======
+| (I1)  | `operand`       | tensor or quantized tensor                   | (C1-C2), (C4-C8) |
+| (I2)  | `start_indices` | 1-dimensional tensor constant of type `si64` | (C1-C2), (C4)    |
+| (I3)  | `limit_indices` | 1-dimensional tensor constant of type `si64` | (C1), (C2), (C4) |
+| (I4)  | `strides`       | 1-dimensional tensor constant of type `si64` | (C1), (C3)       |
+
+#### Outputs
+
+| Name     | Type                       | Constraints |
+|----------|----------------------------|-------------|
+| `result` | tensor or quantized tensor | (C4-C7)     |
+
+#### Constraints
+
+* (C1) size(`start_indices`) = size(`limit_indices`) = size(`strides`) =
+rank(`operand`).
+* (C2) 0 $\le$ `start_indices[d]` $\le$ `limit_indices[d]` $\le$
+`dim(operand, d)` for all dimension `d`.
+* (C3) 0 $\lt$ `strides[d]` for all dimension `d`.
+* (C4) `dim(result, d)` =
+$\lceil$ `(limit_indices[d]-start_indices[d])/stride[d]` $\rceil$ for all
+dimension `d` in `operand`.
+* If the operation uses non-quantized tensors:
+  * (C5) `operand` and `result` have the same element type.
+* If the operation uses quantized tensors:
+  * (C6) `is_quantized_tensor(operand) and is_quantized_tensor(result)`.
+  * (C7) `quantized_element_type(operand) = quantized_element_type(result)`.
+  * (C8) `is_empty(quantization_dimension(operand))`.
+>>>>>>> f4d5db4b (enforce per-tensor quantization scheme)
 
 #### Examples
 
@@ -5377,6 +5427,7 @@ where `result_index[d] = operand_index[permutation[d]]`.
 
 | Label | Name          | Type                                         | Constraints |
 |-------|---------------|----------------------------------------------|-------------|
+<<<<<<< HEAD
 | (I1)  | `operand`     | tensor or per-tensor quantized tensor        | (C1-C3)     |
 | (I2)  | `permutation` | 1-dimensional tensor constant of type `si64` | (C2), (C3)  |
 
@@ -5391,6 +5442,29 @@ where `result_index[d] = operand_index[permutation[d]]`.
 * (C1) `element_type(operand) = element_type(result)`.
 * (C2) `permutation` is a permutation of `range(rank(operand))`.
 * (C3) `shape(result) = dim(operand, permutation...)`.
+=======
+| (I1)  | `operand`     | tensor or quantized tensor                   | (C1-C6)     |
+| (I2)  | `permutation` | 1-dimensional tensor constant of type `si64` | (C1), (C2)  |
+
+#### Outputs
+
+| Name     | Type                       | Constraints |
+|----------|----------------------------|-------------|
+| `result` | tensor or quantized tensor | (C2-C5)     |
+
+#### Constraints
+
+* (C1) `permutation` is a permutation of `[0, 1, ..., R-1]` where `R` is the
+  rank of `operand`.
+* (C2) For all dimensions `i` in `operand`, `dim(operand, i) = dim(result, j)`
+  where `i = permutation[j]`.
+* If the operation uses non-quantized tensors:
+  * (C3)`operand` and `result` have the same element type.
+* If the operation uses quantized tensors:
+  * (C4) `is_quantized_tensor(operand) and is_quantized_tensor(result)`.
+  * (C5) `quantized_element_type(operand) = quantized_element_type(result)`.
+  * (C6) `is_empty(quantization_dimension(operand))`.
+>>>>>>> f4d5db4b (enforce per-tensor quantization scheme)
 
 #### Examples
 
