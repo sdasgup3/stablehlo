@@ -4328,22 +4328,20 @@ and produces a `result` tensor. More formally,
 
 | Label | Name         | Type                                         | Constraints |
 |-------|--------------|----------------------------------------------|-------------|
-| (I1)  | `operand`    | tensor or per-tensor quantized tensor        | (C1), (C4)  |
+| (I1)  | `operand`    | tensor or per-tensor quantized tensor        | (C1)        |
 | (I2)  | `dimensions` | 1-dimensional tensor constant of type `si64` | (C2-C3)     |
 
 #### Outputs
 
-| Name     | Type                                  | Constraints   |
-|----------|---------------------------------------|---------------|
-| `result` | tensor or per-tensor quantized tensor | (C1), (C3-C4) |
+| Name     | Type                                  | Constraints |
+|----------|---------------------------------------|-------------|
+| `result` | tensor or per-tensor quantized tensor | (C1), (C3)  |
 
 #### Constraints
 
 * (C1) `type(operand) = type(result)`.
 * (C2) `is_unique(dimensions)`.
 * (C3) `0 <= dimensions < rank(result)`.
-* If the operation uses quantized tensors:
-  * (C4) `is_quantized_tensor(operand) and is_quantized_tensor(result)`.
 
 #### Examples
 
