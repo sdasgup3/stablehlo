@@ -21,6 +21,8 @@ include "mlir/Interfaces/InferTypeOpInterface.td"
 include "mlir/IR/AttrTypeBase.td"
 include "mlir/IR/OpBase.td"
 
+include "stablehlo/dialect/StablehloTypes.td"
+
 //===----------------------------------------------------------------------===//
 // HLO type definitions.
 //===----------------------------------------------------------------------===//
@@ -93,7 +95,7 @@ class StableHLO_UniformQuantizedUnsignedIntOfWidths<list<int> widths> :
 def HLO_QuantizedSignedInt : StableHLO_UniformQuantizedSignedIntOfWidths<[4, 8, 16, 32]>;
 def HLO_QuantizedUnsignedInt : StableHLO_UniformQuantizedUnsignedIntOfWidths<[4, 8, 16, 32]>;
 def HLO_QuantizedInt :
-    AnyTypeOf<[HLO_QuantizedSignedInt, HLO_QuantizedUnsignedInt]>;
+    AnyTypeOf<[HLO_QuantizedSignedInt, HLO_QuantizedUnsignedInt, StableHLO_UniformQuantizedWithMultiplierAndShiftType]>;
 
 // The broadcasting dimensions correspond to a tuple that describes how a
 // smaller rank shape is broadcast into a larger rank shape. For example,

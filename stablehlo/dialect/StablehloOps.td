@@ -23,21 +23,7 @@ include "mlir/Interfaces/InferTypeOpInterface.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "mlir/IR/OpAsmInterface.td"
 include "stablehlo/dialect/Base.td"
-
-def StableHLO_Dialect : Dialect {
-  let name = "stablehlo";
-  let cppNamespace = "::mlir::stablehlo";
-
-  let description = [{
-    StableHLO is an operation set that expresses ML computations. It has been
-    originally bootstrapped from the MHLO dialect and enhances it with additional
-    functionality, including serialization and versioning, to be used as
-    a portability layer between ML frameworks and ML compilers.
-  }];
-
-  let useDefaultAttributePrinterParser = 0;
-  let useDefaultTypePrinterParser = 0;
-}
+include "stablehlo/dialect/StablehloDialect.td"
 
 class StableHLO_Op<string mnemonic, list<Trait> traits> :
     Op<StableHLO_Dialect, mnemonic, traits> {

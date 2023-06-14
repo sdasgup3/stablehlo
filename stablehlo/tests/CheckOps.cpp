@@ -36,6 +36,10 @@ CheckDialect::CheckDialect(MLIRContext *context)
 #define GET_OP_LIST
 #include "stablehlo/tests/CheckOps.cpp.inc"
       >();
+  addTypes<
+#define GET_TYPEDEF_LIST
+#include "stablehlo/dialect/StablehloTypeDefs.cpp.inc"
+      >();
 }
 
 llvm::Error evalExpectAlmostEqConstOp(const Tensor &lhs, ElementsAttr value) {

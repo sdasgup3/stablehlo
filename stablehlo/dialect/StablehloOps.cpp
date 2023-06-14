@@ -2487,7 +2487,10 @@ StablehloDialect::StablehloDialect(MLIRContext* context)
   addInterfaces<StablehloDialectInlinerInterface>();
   addInterfaces<StablehloHloDialectInterface>();
   addBytecodeInterface(this);
-  addTypes<TokenType>();
+  addTypes<TokenType,
+#define GET_TYPEDEF_LIST
+#include "stablehlo/dialect/StablehloTypeDefs.cpp.inc"
+      >();
   addAttributes<
 #define GET_ATTRDEF_LIST
 #include "stablehlo/dialect/StablehloAttrs.cpp.inc"
