@@ -24,7 +24,6 @@ limitations under the License.
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/OpDefinition.h"
 #include "stablehlo/reference/Tensor.h"
-#include "stablehlo/tests/CheckOps.h"
 
 namespace mlir {
 namespace stablehlo {

@@ -56,6 +56,7 @@ limitations under the License.
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Diagnostics.h"
 #include "mlir/IR/Dialect.h"
+#include "mlir/IR/DialectImplementation.h"
 #include "mlir/IR/FunctionInterfaces.h"
 #include "mlir/IR/Location.h"
 #include "mlir/IR/MLIRContext.h"
@@ -74,6 +75,7 @@ limitations under the License.
 #include "stablehlo/dialect/AssemblyFormat.h"
 #include "stablehlo/dialect/StablehloBytecode.h"
 #include "stablehlo/dialect/StablehloOps.h.inc"
+#include "stablehlo/dialect/StablehloTypes.h"
 #include "stablehlo/dialect/TypeInference.h"
 
 // Include order matters
@@ -2432,6 +2434,9 @@ using mlir::hlo::printVariadicSameOperandsAndResultType;
 #define GET_OP_CLASSES
 #include "stablehlo/dialect/StablehloOps.cpp.inc"
 
+#define GET_TYPEDEF_CLASSES
+#include "stablehlo/dialect/StablehloTypeDefs.cpp.inc"
+
 namespace mlir {
 namespace stablehlo {
 
@@ -2489,7 +2494,10 @@ StablehloDialect::StablehloDialect(MLIRContext* context)
   addInterfaces<StablehloDialectInlinerInterface>();
   addInterfaces<StablehloHloDialectInterface>();
   addBytecodeInterface(this);
-  addTypes<TokenType>();
+  addTypes<TokenType,
+#define GET_TYPEDEF_LIST
+#include "stablehlo/dialect/StablehloTypeDefs.cpp.inc"
+           >();
   addAttributes<
 #define GET_ATTRDEF_LIST
 #include "stablehlo/dialect/StablehloAttrs.cpp.inc"
@@ -2497,12 +2505,15 @@ StablehloDialect::StablehloDialect(MLIRContext* context)
 }
 
 Type StablehloDialect::parseType(DialectAsmParser& parser) const {
-  StringRef dataType;
-  if (parser.parseKeyword(&dataType)) return Type();
+  StringRef mnemonic;
+  Type parsedType;
 
-  if (dataType == "token") return TokenType::get(getContext());
+  auto parseResult = generatedTypeParser(parser, &mnemonic, parsedType);
+  if (parseResult.has_value() && succeeded(*parseResult)) return parsedType;
+  if (mnemonic == "token") return TokenType::get(getContext());
+
   parser.emitError(parser.getNameLoc())
-      << "unknown StableHLO type: " << dataType;
+      << "unknown StableHLO type: " << mnemonic;
   return nullptr;
 }
 
@@ -2511,6 +2522,9 @@ void StablehloDialect::printType(Type type, DialectAsmPrinter& os) const {
     os << "token";
     return;
   }
+
+  // if (succeeded(printStablehloType(type, os))) return;
+  if (succeeded(generatedTypePrinter(type, os))) return;
   os << "<unknown StableHLO type>";
 }
 
