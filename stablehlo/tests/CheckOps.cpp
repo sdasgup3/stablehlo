@@ -15,6 +15,8 @@ limitations under the License.
 
 #include "stablehlo/tests/CheckOps.h"
 
+#include "stablehlo/dialect/StablehloTypes.h"
+
 #define GET_OP_CLASSES
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/Support/DebugStringHelper.h"

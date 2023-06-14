@@ -29,6 +29,7 @@ limitations under the License.
 #include "stablehlo/dialect/Base.h"
 #include "stablehlo/dialect/BroadcastUtils.h"
 #include "stablehlo/dialect/ChloBytecode.h"
+#include "stablehlo/dialect/StablehloTypes.h"
 #include "stablehlo/dialect/TypeInference.h"
 
 // Include order matters
