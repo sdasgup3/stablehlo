@@ -26,7 +26,38 @@ class StableHLO_Type<string name, string typeMnemonic, list<Trait> traits = []>
 }
 
 def StableHLO_UniformQuantizedWithMultiplierAndShiftType : StableHLO_Type<"UniformQuantizedWithMultiplierAndShift", "uniform_multiplier_shift"> {
-  let summary = "Uniform quantized type with integer mutipliers and shifts";
+  let summary = "Uniform per-tensor quantized type with integer mutipliers and shifts";
+  let description = [{
+    Uniform quantized type with integer mutipliers and shifts. This type is used
+    to enable integer only arithmetic.
+  }];
+
+  let parameters = (ins
+    "::mlir::Type":$storageType,
+    "::mlir::Type":$expressedType,
+    "int64_t":$multiplier,
+    "int64_t":$shift,
+    "int64_t":$zero_point,
+    "int64_t":$storageTypeMin,
+    "int64_t":$storageTypeMax
+  );
+
+  let genVerifyDecl = 1;
+  let extraClassDefinition = [{
+    LogicalResult UniformQuantizedWithMultiplierAndShiftType::verify(
+        ::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError,
+        ::mlir::Type storageType, ::mlir::Type expressedType,
+       int64_t multiplier, int64_t shift,
+        int64_t zero_point, int64_t storageTypeMin, int64_t storageTypeMax) {
+      return success();
+    }
+  }];
+
+  let hasCustomAssemblyFormat = 1;
+}
+
+def StableHLO_UniformQuantizedWithMultiplierAndShiftPerAxisType : StableHLO_Type<"UniformQuantizedWithMultiplierAndShiftPerAxis", "uniform_multiplier_shift_per_axis"> {
+  let summary = "Uniform per-axis quantized type with integer mutipliers and shifts";
   let description = [{
     Uniform quantized type with integer mutipliers and shifts. This type is used
     to enable integer only arithmetic.
@@ -45,7 +76,7 @@ def StableHLO_UniformQuantizedWithMultiplierAndShiftType : StableHLO_Type<"Unifo
 
   let genVerifyDecl = 1;
   let extraClassDefinition = [{
-    LogicalResult UniformQuantizedWithMultiplierAndShiftType::verify(
+    LogicalResult UniformQuantizedWithMultiplierAndShiftPerAxisType::verify(
         ::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError,
         ::mlir::Type storageType, ::mlir::Type expressedType,
         int64_t quantizationDimension, ::llvm::ArrayRef<int64_t> multipliers,
@@ -56,9 +87,7 @@ def StableHLO_UniformQuantizedWithMultiplierAndShiftType : StableHLO_Type<"Unifo
     }
   }];
 
-  // let hasCustomAssemblyFormat = 1;
-  let assemblyFormat = "`<` $storageType `` `:` `` $storageTypeMin `` `:` `` $storageTypeMax `` `:` `` $expressedType `` `:` $quantizationDimension `,` `[` $multipliers `]` `,` `[` $shifts `]` `,` `[` $zero_points `]` `>`";
-
+  let hasCustomAssemblyFormat = 1;
 }
 
 #endif // STABLEHLO_DIALECT_STABLEHLO_TYPES

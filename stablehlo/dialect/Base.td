@@ -95,7 +95,7 @@ class StableHLO_UniformQuantizedUnsignedIntOfWidths<list<int> widths> :
 def HLO_QuantizedSignedInt : StableHLO_UniformQuantizedSignedIntOfWidths<[4, 8, 16, 32]>;
 def HLO_QuantizedUnsignedInt : StableHLO_UniformQuantizedUnsignedIntOfWidths<[4, 8, 16, 32]>;
 def HLO_QuantizedInt :
-    AnyTypeOf<[HLO_QuantizedSignedInt, HLO_QuantizedUnsignedInt, StableHLO_UniformQuantizedWithMultiplierAndShiftType]>;
+    AnyTypeOf<[HLO_QuantizedSignedInt, HLO_QuantizedUnsignedInt, StableHLO_UniformQuantizedWithMultiplierAndShiftType, StableHLO_UniformQuantizedWithMultiplierAndShiftPerAxisType]>;
 
 // The broadcasting dimensions correspond to a tuple that describes how a
 // smaller rank shape is broadcast into a larger rank shape. For example,
