@@ -26,13 +26,13 @@ limitations under the License.
 namespace mlir {
 namespace stablehlo {
 
-LogicalResult printStablehloType(Type type, AsmPrinter& printer) {
+LogicalResult printStablehloType(Type type, AsmPrinter &printer) {
   return generatedTypePrinter(type, printer);
 }
 
-OptionalParseResult parseStablehloType(mlir::AsmParser& parser,
-                                       llvm::StringRef* mnemonic,
-                                       mlir::Type& type) {
+OptionalParseResult parseStablehloType(mlir::AsmParser &parser,
+                                       llvm::StringRef *mnemonic,
+                                       mlir::Type &type) {
   return generatedTypeParser(parser, mnemonic, type);
 }
 
