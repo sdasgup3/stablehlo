@@ -37,7 +37,7 @@ def StableHLO_UniformQuantizedWithMultiplierAndShiftType : StableHLO_Type<"Unifo
     "::mlir::Type":$expressedType,
     "int64_t":$multiplier,
     "int64_t":$shift,
-    "int64_t":$zero_point,
+    "int64_t":$zeroPoint,
     "int64_t":$storageTypeMin,
     "int64_t":$storageTypeMax
   );
@@ -47,8 +47,37 @@ def StableHLO_UniformQuantizedWithMultiplierAndShiftType : StableHLO_Type<"Unifo
     LogicalResult UniformQuantizedWithMultiplierAndShiftType::verify(
         ::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError,
         ::mlir::Type storageType, ::mlir::Type expressedType,
-       int64_t multiplier, int64_t shift,
-        int64_t zero_point, int64_t storageTypeMin, int64_t storageTypeMax) {
+        int64_t multiplier, int64_t shift, int64_t zeroPoint,
+        int64_t storageTypeMin, int64_t storageTypeMax) {
+      auto storageIntegerType = storageType.dyn_cast<IntegerType>();
+      auto expressedFloatType = expressedType.dyn_cast<FloatType>();
+      if (!storageIntegerType || !expressedFloatType) return failure();
+
+      auto storageTypeWidth = storageIntegerType.getWidth();
+      auto expressedTypeWidth = expressedFloatType.getWidth();
+
+      // uniform_multiplier_shift_c1
+      if (storageTypeWidth >= expressedTypeWidth) return failure();
+
+      // uniform_multiplier_shift_c2, uniform_multiplier_shift_c3,
+      // uniform_multiplier_shift_c4
+      bool isSigned = !storageIntegerType.isUnsigned();
+      int64_t defaultIntegerMin =
+          isSigned ? llvm::minIntN(storageTypeWidth) : 0;
+      int64_t defaultIntegerMax = isSigned ? llvm::maxIntN(expressedTypeWidth)
+                                           : llvm::maxUIntN(expressedTypeWidth);
+      if (storageTypeMin >= storageTypeMax ||
+          storageTypeMin < defaultIntegerMin ||
+          storageTypeMax > defaultIntegerMax)
+        return failure();
+
+      // uniform_multiplier_shift_c8, uniform_multiplier_shift_c9
+      if (zeroPoint < storageTypeMin || zeroPoint > storageTypeMax)
+        return failure();
+
+      // uniform_multiplier_shift_c14, uniform_multiplier_shift_c15
+      if (multiplier < 0 || shift <= 0) return failure();
+
       return success();
     }
   }];
@@ -69,7 +98,7 @@ def StableHLO_UniformQuantizedWithMultiplierAndShiftPerAxisType : StableHLO_Type
     "int64_t":$quantizationDimension,
     ArrayRefParameter<"int64_t">:$multipliers,
     ArrayRefParameter<"int64_t">:$shifts,
-    ArrayRefParameter<"int64_t">:$zero_points,
+    ArrayRefParameter<"int64_t">:$zeroPoints,
     "int64_t":$storageTypeMin,
     "int64_t":$storageTypeMax
   );
@@ -80,9 +109,46 @@ def StableHLO_UniformQuantizedWithMultiplierAndShiftPerAxisType : StableHLO_Type
         ::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError,
         ::mlir::Type storageType, ::mlir::Type expressedType,
         int64_t quantizationDimension, ::llvm::ArrayRef<int64_t> multipliers,
-        ::llvm::ArrayRef<int64_t> shifts,
-        ::llvm::ArrayRef<int64_t> zero_points, int64_t storageTypeMin,
-        int64_t storageTypeMax) {
+        ::llvm::ArrayRef<int64_t> shifts, ::llvm::ArrayRef<int64_t> zeroPoints,
+        int64_t storageTypeMin, int64_t storageTypeMax) {
+      auto storageIntegerType = storageType.dyn_cast<IntegerType>();
+      auto expressedFloatType = expressedType.dyn_cast<FloatType>();
+      if (!storageIntegerType || !expressedFloatType) return failure();
+
+      auto storageTypeWidth = storageIntegerType.getWidth();
+      auto expressedTypeWidth = expressedFloatType.getWidth();
+
+      // uniform_multiplier_shift_c1
+      if (storageTypeWidth >= expressedTypeWidth) return failure();
+
+      // uniform_multiplier_shift_c2, uniform_multiplier_shift_c3,
+      // uniform_multiplier_shift_c4
+      bool isSigned = !storageIntegerType.isUnsigned();
+      int64_t defaultIntegerMin =
+          isSigned ? llvm::minIntN(storageTypeWidth) : 0;
+      int64_t defaultIntegerMax = isSigned ? llvm::maxIntN(expressedTypeWidth)
+                                           : llvm::maxUIntN(expressedTypeWidth);
+      if (storageTypeMin >= storageTypeMax ||
+          storageTypeMin < defaultIntegerMin ||
+          storageTypeMax > defaultIntegerMax)
+        return failure();
+
+      // uniform_multiplier_shift_c8, uniform_multiplier_shift_c9
+      for (auto zeroPoint : zeroPoints)
+        if (zeroPoint < storageTypeMin || zeroPoint > storageTypeMax)
+          return failure();
+
+      // uniform_multiplier_shift_c13
+      if (shifts.size() != multipliers.size() ||
+          shifts.size() != zeroPoints.size())
+        return failure();
+
+      // uniform_multiplier_shift_c14, uniform_multiplier_shift_c15
+      for (auto multiplierShift : llvm::zip(multipliers, shifts))
+        if (std::get<0>(multiplierShift) < 0 ||
+            std::get<1>(multiplierShift) <= 0)
+          return failure();
+
       return success();
     }
   }];
