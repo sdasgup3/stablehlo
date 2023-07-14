@@ -27,6 +27,12 @@ def StablehloCanonicalizeDynamismPass : Pass<"stablehlo-canonicalize-dynamism", 
   }];
 }
 
+def StablehloCanonicalizeQuantTypesPass : Pass<"stablehlo-canonicalize-quanttypes", "ModuleOp"> {
+  let summary = "Canonicalizes StableHLO uniform quantized types to integer-based quantized types.";
+  let dependentDialects = ["mlir::func::FuncDialect", "mlir::stablehlo::StablehloDialect",
+                           "mlir::shape::ShapeDialect", "mlir::quant::QuantizationDialect"];
+}
+
 def StablehloLegalizeToVhloPass : Pass<"stablehlo-legalize-to-vhlo", "ModuleOp"> {
   let summary = "Legalize StableHLO to VHLO.";
   let dependentDialects = ["mlir::vhlo::VhloDialect"];
