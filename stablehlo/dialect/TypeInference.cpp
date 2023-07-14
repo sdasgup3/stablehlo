@@ -59,6 +59,7 @@ limitations under the License.
 #include "mlir/Support/LLVM.h"
 #include "mlir/Support/LogicalResult.h"
 #include "stablehlo/dialect/AssemblyFormat.h"
+#include "stablehlo/dialect/StablehloTypes.h"
 
 namespace mlir {
 namespace hlo {
@@ -3008,10 +3009,26 @@ LogicalResult inferUniformDequantizeOp(
     SmallVectorImpl<ShapedTypeComponents>& inferredReturnShapes) {
   auto operandType = operand.getType().cast<ShapedType>();
   // Trait HLO_QuantizedIntTensor in ODS guarantees QuantizedType;
-  auto quantType = operandType.getElementType().cast<quant::QuantizedType>();
+  auto elementType = operandType.getElementType();
+  Type expressedType;
+  if (elementType.isa<quant::QuantizedType>())
+    expressedType = elementType.cast<quant::QuantizedType>().getExpressedType();
+  if (elementType.isa<stablehlo::UniformQuantizedWithMultiplierAndShiftType>())
+    expressedType =
+        elementType
+            .cast<stablehlo::UniformQuantizedWithMultiplierAndShiftType>()
+            .getExpressedType();
+  if (elementType
+          .isa<stablehlo::UniformQuantizedWithMultiplierAndShiftPerAxisType>())
+    expressedType =
+        elementType
+            .cast<
+                stablehlo::UniformQuantizedWithMultiplierAndShiftPerAxisType>()
+            .getExpressedType();
+
   auto shape = operandType.cast<ShapedType>().getShape();
   // uniform_dequantize_c1, uniform_dequantize_c2
-  inferredReturnShapes.emplace_back(shape, quantType.getExpressedType());
+  inferredReturnShapes.emplace_back(shape, expressedType);
   return success();
 }
 

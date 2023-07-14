@@ -35,8 +35,8 @@ def StableHLO_UniformQuantizedWithMultiplierAndShiftType : StableHLO_Type<"Unifo
   let parameters = (ins
     "::mlir::Type":$storageType,
     "::mlir::Type":$expressedType,
-    "int64_t":$multiplier,
-    "int64_t":$shift,
+    "int32_t":$multiplier,
+    "int32_t":$shift,
     "int64_t":$zeroPoint,
     "int64_t":$storageTypeMin,
     "int64_t":$storageTypeMax
@@ -47,7 +47,7 @@ def StableHLO_UniformQuantizedWithMultiplierAndShiftType : StableHLO_Type<"Unifo
     LogicalResult UniformQuantizedWithMultiplierAndShiftType::verify(
         ::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError,
         ::mlir::Type storageType, ::mlir::Type expressedType,
-        int64_t multiplier, int64_t shift, int64_t zeroPoint,
+        int32_t multiplier, int32_t shift, int64_t zeroPoint,
         int64_t storageTypeMin, int64_t storageTypeMax) {
       auto storageIntegerType = storageType.dyn_cast<IntegerType>();
       auto expressedFloatType = expressedType.dyn_cast<FloatType>();
@@ -96,8 +96,8 @@ def StableHLO_UniformQuantizedWithMultiplierAndShiftPerAxisType : StableHLO_Type
     "::mlir::Type":$storageType,
     "::mlir::Type":$expressedType,
     "int64_t":$quantizationDimension,
-    ArrayRefParameter<"int64_t">:$multipliers,
-    ArrayRefParameter<"int64_t">:$shifts,
+    ArrayRefParameter<"int32_t">:$multipliers,
+    ArrayRefParameter<"int32_t">:$shifts,
     ArrayRefParameter<"int64_t">:$zeroPoints,
     "int64_t":$storageTypeMin,
     "int64_t":$storageTypeMax
@@ -108,8 +108,8 @@ def StableHLO_UniformQuantizedWithMultiplierAndShiftPerAxisType : StableHLO_Type
     LogicalResult UniformQuantizedWithMultiplierAndShiftPerAxisType::verify(
         ::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError,
         ::mlir::Type storageType, ::mlir::Type expressedType,
-        int64_t quantizationDimension, ::llvm::ArrayRef<int64_t> multipliers,
-        ::llvm::ArrayRef<int64_t> shifts, ::llvm::ArrayRef<int64_t> zeroPoints,
+        int64_t quantizationDimension, ::llvm::ArrayRef<int32_t> multipliers,
+        ::llvm::ArrayRef<int32_t> shifts, ::llvm::ArrayRef<int64_t> zeroPoints,
         int64_t storageTypeMin, int64_t storageTypeMax) {
       auto storageIntegerType = storageType.dyn_cast<IntegerType>();
       auto expressedFloatType = expressedType.dyn_cast<FloatType>();

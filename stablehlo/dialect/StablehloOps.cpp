@@ -3111,8 +3111,8 @@ ParseResult parseStorageRange(AsmParser& parser, IntegerType storageType,
   return success();
 }
 
-ParseResult parseQuantizationParameters(AsmParser& parser, int64_t& multiplier,
-                                        int64_t& shift, int64_t& zeroPoint) {
+ParseResult parseQuantizationParameters(AsmParser& parser, int32_t& multiplier,
+                                        int32_t& shift, int64_t& zeroPoint) {
   // <multiplier,shift>[:zeroPoint]?
   // <multiplier, shift>
   if (parser.parseLess() || parser.parseInteger(multiplier) ||
@@ -3130,7 +3130,7 @@ ParseResult parseQuantizationParameters(AsmParser& parser, int64_t& multiplier,
   return parser.parseInteger(zeroPoint);
 }
 
-void printQuantParams(int64_t multiplier, int64_t shift, int64_t zeroPoint,
+void printQuantParams(int32_t multiplier, int32_t shift, int64_t zeroPoint,
                       AsmPrinter& printer) {
   printer << "<" << multiplier << ", " << shift << ">";
   if (zeroPoint != 0) {
@@ -3164,8 +3164,8 @@ Type UniformQuantizedWithMultiplierAndShiftPerAxisType::parse(
   int64_t storageTypeMin;
   int64_t storageTypeMax;
   int32_t quantizedDimension;
-  SmallVector<int64_t> multipliers;
-  SmallVector<int64_t> shifts;
+  SmallVector<int32_t> multipliers;
+  SmallVector<int32_t> shifts;
   SmallVector<int64_t> zeroPoints;
 
   // Type specification.
@@ -3205,8 +3205,8 @@ Type UniformQuantizedWithMultiplierAndShiftPerAxisType::parse(
     return nullptr;
   }
 
-  ArrayRef<int64_t> multipliersRef(multipliers.begin(), multipliers.end());
-  ArrayRef<int64_t> shiftsRef(shifts.begin(), shifts.end());
+  ArrayRef<int32_t> multipliersRef(multipliers.begin(), multipliers.end());
+  ArrayRef<int32_t> shiftsRef(shifts.begin(), shifts.end());
   ArrayRef<int64_t> zeroPointsRef(zeroPoints.begin(), zeroPoints.end());
   return UniformQuantizedWithMultiplierAndShiftPerAxisType::get(
       parser.getContext(), storageType, expressedType, quantizedDimension,
@@ -3218,8 +3218,8 @@ Type UniformQuantizedWithMultiplierAndShiftType::parse(AsmParser& parser) {
   FloatType expressedType;
   int64_t storageTypeMin;
   int64_t storageTypeMax;
-  int64_t multiplier;
-  int64_t shift;
+  int32_t multiplier;
+  int32_t shift;
   int64_t zeroPoint;
 
   // Type specification.
@@ -3278,8 +3278,8 @@ void UniformQuantizedWithMultiplierAndShiftPerAxisType::print(
   printer << ", ";
 
   // scheme specific parameters
-  ArrayRef<int64_t> multipliers = getMultipliers();
-  ArrayRef<int64_t> shifts = getShifts();
+  ArrayRef<int32_t> multipliers = getMultipliers();
+  ArrayRef<int32_t> shifts = getShifts();
   ArrayRef<int64_t> zeroPoints = getZeroPoints();
   printer << "{";
   llvm::interleave(
