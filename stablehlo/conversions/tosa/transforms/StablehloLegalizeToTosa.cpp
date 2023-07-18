@@ -13,16 +13,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
+#include <fenv.h>
+
 #include <memory>
 #include <utility>
 
+#include "llvm/Support/Debug.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Tosa/IR/TosaOps.h"
+#include "mlir/Dialect/Tosa/Utils/QuantUtils.h"
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/Parser/Parser.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "stablehlo/conversions/tosa/transforms/Passes.h"
 #include "stablehlo/dialect/StablehloOps.h"
+#include "stablehlo/dialect/StablehloTypes.h"
 
 #define PASS_NAME "stablehlo-legalize-to-tosa"
 #define DEBUG_TYPE PASS_NAME
@@ -468,6 +473,173 @@ struct ConvertStablehloWhileOp : public OpRewritePattern<stablehlo::WhileOp> {
   }
 };
 
+namespace {
+
+// Utilities to generate tosa.rescale operations.
+
+/* StableHLO Multiplier shift quantization type
+**
+** double convertMultiplierAndShiftToScale(int32_t m, int32_t s) {
+**   double multiplier = static_cast<double>(m);
+**   double shift = static_cast<double>(s);
+**   double result = multiplier * pow(2, -shift);
+**   return result;
+** }
+*/
+
+// Create a TOSA rescale op from TFLite scaling, zero points and rounding mode
+Value buildRescale(PatternRewriter& rewriter, Operation* op,
+                   ShapedType output_type, Value input_val, double scale,
+                   int64_t input_zp, int64_t output_zp, bool double_round,
+                   bool scale32) {
+  int32_t multiplier;
+  int32_t shift;
+
+  int32_t scale_width = scale32 ? 32 : 16;
+
+  computeMultiplierAndShift(scale, multiplier, shift, scale_width);
+  auto rescale_op = rewriter.create<tosa::RescaleOp>(
+      op->getLoc(), output_type, input_val,
+      rewriter.getI32IntegerAttr(input_zp),
+      rewriter.getI32IntegerAttr(output_zp),
+      rewriter.getDenseI32ArrayAttr({multiplier}),
+      rewriter.getDenseI32ArrayAttr({shift}), rewriter.getBoolAttr(scale32),
+      rewriter.getBoolAttr(double_round),
+      rewriter.getBoolAttr(/*per_channel*/ false));
+
+  return rescale_op.getResult();
+}
+
+// Creates TOSA rescale op with int32 output
+Value buildRescaleToInt32(PatternRewriter& rewriter, Operation* op,
+                          Value inputVal, double inputScale, int64_t inputZp) {
+  // Output is always int32 type
+  auto inputType = dyn_cast<mlir::ShapedType>(inputVal.getType());
+  assert(inputType);
+  auto outputType = inputType.clone(rewriter.getI32Type());
+
+  return buildRescale(rewriter, op, outputType, inputVal, inputScale, inputZp,
+                      0, /*double_round*/ false, /*scale_32*/ true);
+}
+
+// Creates TOSA rescale op with int32 input
+Value buildRescaleFromInt32(PatternRewriter& rewriter, Operation* op,
+                            ShapedType output_type, Value input_val,
+                            double output_scale, int64_t output_zp) {
+  // Input should be int32 type
+  auto input_type = dyn_cast<mlir::ShapedType>(input_val.getType());
+  (void)input_type;
+  assert(input_type && input_type.getElementType().isInteger(32) &&
+         "expected rescale input element type to be i32");
+
+  return buildRescale(rewriter, op, output_type, input_val, output_scale, 0,
+                      output_zp, /*double_round*/ false, true);
+}
+
+}  // namespace
+
+struct ConvertStablehloAddOp : public OpRewritePattern<stablehlo::AddOp> {
+  using OpRewritePattern<stablehlo::AddOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(stablehlo::AddOp op,
+                                PatternRewriter& rewriter) const override {
+    ShapedType input_lhs_type = op.getLhs().getType().dyn_cast<ShapedType>();
+    ShapedType input_rhs_type = op.getRhs().getType().dyn_cast<ShapedType>();
+    ShapedType output_type = op.getResult().getType().dyn_cast<ShapedType>();
+    // Not a ranked tensor output
+    if (!input_lhs_type || !input_rhs_type || !output_type) {
+      return rewriter.notifyMatchFailure(
+          op, "input/output tensor should be all of shaped type");
+    }
+
+    LLVM_DEBUG(llvm::dbgs() << "In ConvertStablehloAddOp\n");
+
+    /* StableHLO Multiplier shift quantization type
+    **
+    ** auto input_lhs_qtype =
+    **     input_lhs_type.getElementType()
+    ** .dyn_cast<stablehlo::UniformQuantizedWithMultiplierAndShiftType>();
+    ** auto input_rhs_qtype =
+    **     input_rhs_type.getElementType()
+    ** .dyn_cast<stablehlo::UniformQuantizedWithMultiplierAndShiftType>();
+    ** auto output_qtype =
+    **     output_type.getElementType()
+    ** .dyn_cast<stablehlo::UniformQuantizedWithMultiplierAndShiftType>();
+    */
+    auto input_lhs_qtype =
+        input_lhs_type.getElementType().dyn_cast<quant::UniformQuantizedType>();
+    auto input_rhs_qtype =
+        input_rhs_type.getElementType().dyn_cast<quant::UniformQuantizedType>();
+    auto output_qtype =
+        output_type.getElementType().dyn_cast<quant::UniformQuantizedType>();
+
+    if (input_lhs_qtype && input_rhs_qtype && output_qtype) {
+      LLVM_DEBUG(llvm::dbgs() << "Handling quantized types\n");
+
+      /* StableHLO Multiplier shift quantization type
+      **
+      ** int32_t in_lhs_multiplier = input_lhs_qtype.getMultiplier();
+      ** int32_t in_lhs_shift = input_lhs_qtype.getShift();
+      ** int32_t in_rhs_multiplier = input_rhs_qtype.getMultiplier();
+      ** int32_t in_rhs_shift = input_rhs_qtype.getShift();
+      ** int32_t output_multiplier = output_qtype.getMultiplier();
+      ** int32_t output_shift = output_qtype.getShift();
+
+      ** double in_lhs_scale =
+      **     convertMultiplierAndShiftToScale(in_lhs_multiplier, in_lhs_shift);
+      ** double in_rhs_scale =
+      **     convertMultiplierAndShiftToScale(in_rhs_multiplier, in_rhs_shift);
+      ** double output_scale =
+      **     convertMultiplierAndShiftToScale(output_multiplier, output_shift);
+      */
+
+      double in_lhs_scale = input_lhs_qtype.getScale();
+      double in_rhs_scale = input_rhs_qtype.getScale();
+      double output_scale = output_qtype.getScale();
+
+      double max_scale_2x = 2.0 * std::max(in_lhs_scale, in_rhs_scale);
+
+      const int32_t SHIFT_8_BIT = 20;
+      const int32_t SHIFT_16_BIT = 15;
+
+      int32_t input_shift =
+          (output_qtype.getStorageType().getIntOrFloatBitWidth() == 16)
+              ? SHIFT_16_BIT
+              : SHIFT_8_BIT;
+
+      double lhs_rescale_scale = in_lhs_scale / max_scale_2x;
+      double rhs_rescale_scale = in_rhs_scale / max_scale_2x;
+      double output_rescale_scale =
+          max_scale_2x / (output_scale * static_cast<double>(1 << input_shift));
+
+      Value op1_rescale_lhs = buildRescaleToInt32(
+          rewriter, op, op.getLhs(),
+          lhs_rescale_scale * static_cast<double>(1 << input_shift),
+          input_lhs_qtype.getZeroPoint());
+      Value op2_rescale_rhs = buildRescaleToInt32(
+          rewriter, op, op.getRhs(),
+          rhs_rescale_scale * static_cast<double>(1 << input_shift),
+          input_rhs_qtype.getZeroPoint());
+
+      ShapedType rescale_type_output = output_type.clone(rewriter.getI32Type());
+      auto op3_add_op1_op2 = rewriter.create<tosa::AddOp>(
+          op->getLoc(), rescale_type_output, op1_rescale_lhs, op2_rescale_rhs);
+      Value op4_rescale_op3 = buildRescaleFromInt32(
+          rewriter, op, output_type, op3_add_op1_op2.getResult(),
+          output_rescale_scale, output_qtype.getZeroPoint());
+
+      rewriter.replaceOp(op, {op4_rescale_op3});
+    } else {
+      LLVM_DEBUG(llvm::dbgs() << "Handling non-quantized types\n");
+      auto newAddOp = rewriter.create<tosa::AddOp>(
+          op->getLoc(), op->getResultTypes(), op->getOperands());
+
+      rewriter.replaceOp(op, newAddOp.getResult());
+    }
+    return success();
+  }
+};
+
 LogicalResult StablehloLegalizeToTosaPass::initialize(MLIRContext* ctx) {
   RewritePatternSet patternList(ctx);
   populateGeneratedPDLLPatterns(patternList);
@@ -484,6 +656,7 @@ LogicalResult StablehloLegalizeToTosaPass::initialize(MLIRContext* ctx) {
   patternList.addWithLabel<ConvertStablehloTransposeOp>({"StablehloTranspose"},
                                                         ctx);
   patternList.addWithLabel<ConvertStablehloWhileOp>({"StablehloWhile"}, ctx);
+  patternList.addWithLabel<ConvertStablehloAddOp>({"StablehloAdd"}, ctx);
   patterns = std::move(patternList);
   return success();
 }
