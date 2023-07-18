@@ -119,10 +119,6 @@ Pattern =>
 
 // Binary ops.
 Pattern =>
-  replace op<stablehlo.add>(input0 : Value<_: Tosa_Tensor>,
-                       input1 : Value<_: Tosa_Tensor>)
-     with op<tosa.add>(input0, input1);
-Pattern =>
   replace op<stablehlo.and>(input0 : Value<_: Tosa_Tensor>,
                        input1 : Value<_: Tosa_Tensor>)
      with op<tosa.bitwise_and>(input0, input1);
