@@ -473,20 +473,12 @@ struct ConvertStablehloWhileOp : public OpRewritePattern<stablehlo::WhileOp> {
   }
 };
 
+// #define INT_RESCALE
+#define FLOAT_RESCALE
+// #define STABLEHLO_TO_TOSA_LEGALIZE
 namespace {
 
-// Utilities to generate tosa.rescale operations.
-
-/* StableHLO Multiplier shift quantization type
-**
-** double convertMultiplierAndShiftToScale(int32_t m, int32_t s) {
-**   double multiplier = static_cast<double>(m);
-**   double shift = static_cast<double>(s);
-**   double result = multiplier * pow(2, -shift);
-**   return result;
-** }
-*/
-
+#ifdef STABLEHLO_TO_TOSA_LEGALIZE
 // Create a TOSA rescale op from TFLite scaling, zero points and rounding mode
 Value buildRescale(PatternRewriter& rewriter, Operation* op,
                    ShapedType output_type, Value input_val, double scale,
@@ -509,32 +501,199 @@ Value buildRescale(PatternRewriter& rewriter, Operation* op,
 
   return rescale_op.getResult();
 }
+#endif
+
+#if defined(FLOAT_RESCALE) || defined(INT_RESCALE)
+// Create a 32-bit integer constant operator from an int
+Value getTosaConstTensorSingleI32(PatternRewriter& rewriter, Operation* op,
+                                  int32_t val) {
+  auto const_type = RankedTensorType::get({}, rewriter.getIntegerType(32));
+  auto const_attr = DenseElementsAttr::get(const_type, val);
+
+  auto const_op =
+      rewriter.create<tosa::ConstOp>(op->getLoc(), const_type, const_attr);
+  return const_op.getResult();
+}
+
+/*
+** def rescale(value, multiplier, shift, input_zp, output_zp):
+**  round = 1 << (shift - 1)
+**  result1 =  ( value - input_zp) * multiplier + round
+**  result2 = result1 >> shift
+**  return result2 + output_zp
+*/
+Value simulateRescaleOp(PatternRewriter& rewriter, Operation* op,
+                        ShapedType output_type, Value input_val,
+                        int32_t multiplier, int32_t shift, int64_t input_zp,
+                        int64_t output_zp) {
+  auto shift_val = getTosaConstTensorSingleI32(rewriter, op, shift);
+  auto multiplier_val = getTosaConstTensorSingleI32(rewriter, op, multiplier);
+  auto input_zp_val = getTosaConstTensorSingleI32(rewriter, op, input_zp);
+  auto output_zp_val = getTosaConstTensorSingleI32(rewriter, op, output_zp);
+  auto one = getTosaConstTensorSingleI32(rewriter, op, 1);
+  auto const_type = RankedTensorType::get({}, rewriter.getIntegerType(32));
+  auto shift_minus_one =
+      rewriter.create<tosa::SubOp>(op->getLoc(), const_type, shift_val, one);
+  auto round = rewriter.create<tosa::LogicalLeftShiftOp>(
+      op->getLoc(), const_type, one, shift_minus_one);
+
+  auto result1_0 = rewriter.create<tosa::SubOp>(op->getLoc(), output_type,
+                                                input_val, input_zp_val);
+  auto result1_1 = rewriter.create<tosa::MulOp>(op->getLoc(), output_type,
+                                                result1_0, multiplier_val, 0);
+  auto result1 =
+      rewriter.create<tosa::AddOp>(op->getLoc(), output_type, result1_1, round);
+
+  auto result2 = rewriter.create<tosa::ArithmeticRightShiftOp>(
+      op->getLoc(), output_type, result1, shift_val, true);
+  auto result = rewriter.create<tosa::AddOp>(op->getLoc(), output_type, result2,
+                                             output_zp_val);
+  return result.getResult();
+}
+#endif
 
 // Creates TOSA rescale op with int32 output
 Value buildRescaleToInt32(PatternRewriter& rewriter, Operation* op,
-                          Value inputVal, double inputScale, int64_t inputZp) {
+                          Value inputVal, int32_t multiplier, int32_t shift,
+                          int64_t inputZp) {
   // Output is always int32 type
   auto inputType = dyn_cast<mlir::ShapedType>(inputVal.getType());
   assert(inputType);
-  auto outputType = inputType.clone(rewriter.getI32Type());
 
+#if defined(FLOAT_RESCALE) || defined(INT_RESCALE)
+  auto outputType = inputType.clone(rewriter.getI32Type());
+  auto inputCasted =
+      // rewriter.create<tosa::CastOp>(op->getLoc(), outputType, inputVal);
+      rewriter.create<stablehlo::ConvertOp>(op->getLoc(), outputType, inputVal);
+  return simulateRescaleOp(rewriter, op, outputType, inputCasted, multiplier,
+                           shift, inputZp, 0);
+#endif
+
+#ifdef STABLEHLO_TO_TOSA_LEGALIZE
+  auto outputType = inputType.clone(rewriter.getI32Type());
   return buildRescale(rewriter, op, outputType, inputVal, inputScale, inputZp,
                       0, /*double_round*/ false, /*scale_32*/ true);
+#endif
 }
 
 // Creates TOSA rescale op with int32 input
 Value buildRescaleFromInt32(PatternRewriter& rewriter, Operation* op,
                             ShapedType output_type, Value input_val,
-                            double output_scale, int64_t output_zp) {
+                            int32_t multiplier, int32_t shift,
+                            int64_t output_zp) {
   // Input should be int32 type
   auto input_type = dyn_cast<mlir::ShapedType>(input_val.getType());
   (void)input_type;
   assert(input_type && input_type.getElementType().isInteger(32) &&
          "expected rescale input element type to be i32");
 
+#if defined(FLOAT_RESCALE) || defined(INT_RESCALE)
+  auto rescaledIntOutput = simulateRescaleOp(
+      rewriter, op, input_type, input_val, multiplier, shift, 0, output_zp);
+  // return rewriter.create<tosa::CastOp>(op->getLoc(), output_type,
+  return rewriter.create<stablehlo::ConvertOp>(op->getLoc(), output_type,
+                                       rescaledIntOutput);
+#endif
+
+#ifdef STABLEHLO_TO_TOSA_LEGALIZE
   return buildRescale(rewriter, op, output_type, input_val, output_scale, 0,
                       output_zp, /*double_round*/ false, true);
+#endif
 }
+
+#ifdef FLOAT_RESCALE
+void deriveRescaleParametersForAddOpUsingFloatComp(
+    double lhsScale, double rhsScale, double resultScale,
+    int32_t& lhsDerivedMultiplier, int32_t& lhsDerivedShift,
+    int32_t& rhsDerivedMultiplier, int32_t& rhsDerivedShift,
+    int32_t& resDerivedMultiplier, int32_t& resDerivedShift) {
+  double max_scale_2x = 2.0 * std::max(lhsScale, rhsScale);
+
+  // hardcoding the value for 32-bit for now
+  // Full logic to decide on input_shift is given by
+  // https://github.com/tensorflow/tensorflow/blob/60f7a770d64cb6cb3a93f84c291272ec51304d31/tensorflow/compiler/mlir/tosa/transforms/legalize_tfl.cc#L706
+  int32_t input_shift = 20;
+
+  double lhsRescaleScale = lhsScale / max_scale_2x;
+  double rhsRescaleScale = rhsScale / max_scale_2x;
+  double resRescaleScale =
+      max_scale_2x / (resultScale * static_cast<double>(1 << input_shift));
+
+  computeMultiplierAndShift(
+      lhsRescaleScale * static_cast<double>(1 << input_shift),
+      lhsDerivedMultiplier, lhsDerivedShift, 32);
+  computeMultiplierAndShift(
+      rhsRescaleScale * static_cast<double>(1 << input_shift),
+      rhsDerivedMultiplier, rhsDerivedShift, 32);
+  computeMultiplierAndShift(resRescaleScale, resDerivedMultiplier,
+                            resDerivedShift, 32);
+}
+#endif
+
+#ifdef INT_RESCALE
+void maxScale(int32_t lhsMultiplier, int32_t lhsShift, int32_t rhsMultiplier,
+              int32_t rhsShift, int32_t& commonMultiplier,
+              int32_t& commonShift) {
+  if (lhsMultiplier > rhsMultiplier >> (lhsShift - rhsShift)) {
+    commonMultiplier = lhsMultiplier;
+    commonShift = lhsShift;
+    return;
+  }
+
+  commonMultiplier = rhsMultiplier;
+  commonShift = rhsShift;
+}
+
+void scalingDivide(int32_t numerator, int32_t denominator, int32_t shift,
+                   int32_t& effective_multiplier, int32_t& effective_shift) {
+  while (numerator > (denominator << 31) && shift >= 2) {
+    numerator = numerator / 2;
+    shift = shift - 1;
+  }
+
+  while (numerator < denominator && shift < 62) {
+    numerator = 2 * numerator;
+    shift = shift + 1;
+  }
+
+  effective_multiplier = numerator / denominator;
+  effective_shift = shift;
+}
+
+void deriveRescaleParametersForAddOpUsingIntComp(
+    int32_t lhsMultiplier, int32_t lhsShift, int32_t rhsMultiplier,
+    int32_t rhsShift, int32_t resMultiplier, int32_t resShift,
+    int32_t& lhsDerivedMultiplier, int32_t& lhsDerivedShift,
+    int32_t& rhsDerivedMultiplier, int32_t& rhsDerivedShift,
+    int32_t& resDerivedMultiplier, int32_t& resDerivedShift) {
+  int32_t commonMultiplier, commonShift;
+  maxScale(lhsMultiplier, lhsShift, rhsMultiplier, rhsShift, commonMultiplier,
+           commonShift);
+  commonShift--;
+
+  // hardcoding the value for 32-bit for now
+  // Full logic to decide on input_shift is given by
+  // https://github.com/tensorflow/tensorflow/blob/60f7a770d64cb6cb3a93f84c291272ec51304d31/tensorflow/compiler/mlir/tosa/transforms/legalize_tfl.cc#L706
+  int32_t input_shift = 20;
+
+  int32_t lhsRescaleMultiplier, lhsRescaleShift;
+  scalingDivide(lhsMultiplier, commonMultiplier, lhsShift - commonShift,
+                lhsRescaleMultiplier, lhsRescaleShift);
+
+  int32_t rhsRescaleMultiplier, rhsRescaleShift;
+  scalingDivide(rhsMultiplier, commonMultiplier, rhsShift - commonShift,
+                rhsRescaleMultiplier, rhsRescaleShift);
+
+  scalingDivide(commonMultiplier, resMultiplier,
+                commonShift - (resShift - input_shift), resDerivedMultiplier,
+                resDerivedShift);
+
+  lhsDerivedMultiplier = lhsRescaleMultiplier;
+  lhsDerivedShift = lhsRescaleShift - input_shift;
+  rhsDerivedMultiplier = rhsRescaleMultiplier;
+  rhsDerivedShift = rhsRescaleShift - input_shift;
+}
+#endif
 
 }  // namespace
 
@@ -552,81 +711,63 @@ struct ConvertStablehloAddOp : public OpRewritePattern<stablehlo::AddOp> {
           op, "input/output tensor should be all of shaped type");
     }
 
-    LLVM_DEBUG(llvm::dbgs() << "In ConvertStablehloAddOp\n");
-
-    /* StableHLO Multiplier shift quantization type
-    **
-    ** auto input_lhs_qtype =
-    **     input_lhs_type.getElementType()
-    ** .dyn_cast<stablehlo::UniformQuantizedWithMultiplierAndShiftType>();
-    ** auto input_rhs_qtype =
-    **     input_rhs_type.getElementType()
-    ** .dyn_cast<stablehlo::UniformQuantizedWithMultiplierAndShiftType>();
-    ** auto output_qtype =
-    **     output_type.getElementType()
-    ** .dyn_cast<stablehlo::UniformQuantizedWithMultiplierAndShiftType>();
-    */
+#ifdef FLOAT_RESCALE
     auto input_lhs_qtype =
         input_lhs_type.getElementType().dyn_cast<quant::UniformQuantizedType>();
     auto input_rhs_qtype =
         input_rhs_type.getElementType().dyn_cast<quant::UniformQuantizedType>();
     auto output_qtype =
         output_type.getElementType().dyn_cast<quant::UniformQuantizedType>();
+#endif
+
+#ifdef INT_RESCALE
+    auto input_lhs_qtype =
+        input_lhs_type.getElementType()
+            .dyn_cast<stablehlo::UniformQuantizedWithMultiplierAndShiftType>();
+    auto input_rhs_qtype =
+        input_rhs_type.getElementType()
+            .dyn_cast<stablehlo::UniformQuantizedWithMultiplierAndShiftType>();
+    auto output_qtype =
+        output_type.getElementType()
+            .dyn_cast<stablehlo::UniformQuantizedWithMultiplierAndShiftType>();
+#endif
 
     if (input_lhs_qtype && input_rhs_qtype && output_qtype) {
-      LLVM_DEBUG(llvm::dbgs() << "Handling quantized types\n");
+      llvm::errs() << "Handling quantized types\n";
 
-      /* StableHLO Multiplier shift quantization type
-      **
-      ** int32_t in_lhs_multiplier = input_lhs_qtype.getMultiplier();
-      ** int32_t in_lhs_shift = input_lhs_qtype.getShift();
-      ** int32_t in_rhs_multiplier = input_rhs_qtype.getMultiplier();
-      ** int32_t in_rhs_shift = input_rhs_qtype.getShift();
-      ** int32_t output_multiplier = output_qtype.getMultiplier();
-      ** int32_t output_shift = output_qtype.getShift();
+      int32_t lhsDerivedMultiplier, lhsDerivedShift, rhsDerivedMultiplier,
+          rhsDerivedShift, resDerivedMultiplier, resDerivedShift;
+#ifdef FLOAT_RESCALE
+      deriveRescaleParametersForAddOpUsingFloatComp(
+          input_lhs_qtype.getScale(), input_rhs_qtype.getScale(),
+          output_qtype.getScale(), lhsDerivedMultiplier, lhsDerivedShift,
+          rhsDerivedMultiplier, rhsDerivedShift, resDerivedMultiplier,
+          resDerivedShift);
+#endif
 
-      ** double in_lhs_scale =
-      **     convertMultiplierAndShiftToScale(in_lhs_multiplier, in_lhs_shift);
-      ** double in_rhs_scale =
-      **     convertMultiplierAndShiftToScale(in_rhs_multiplier, in_rhs_shift);
-      ** double output_scale =
-      **     convertMultiplierAndShiftToScale(output_multiplier, output_shift);
-      */
+#ifdef INT_RESCALE
+      deriveRescaleParametersForAddOpUsingIntComp(
+          input_lhs_qtype.getMultiplier(), input_lhs_qtype.getShift(),
+          input_rhs_qtype.getMultiplier(), input_rhs_qtype.getShift(),
+          output_qtype.getMultiplier(), output_qtype.getShift(),
+          lhsDerivedMultiplier, lhsDerivedShift, rhsDerivedMultiplier,
+          rhsDerivedShift, resDerivedMultiplier, resDerivedShift);
+#endif
 
-      double in_lhs_scale = input_lhs_qtype.getScale();
-      double in_rhs_scale = input_rhs_qtype.getScale();
-      double output_scale = output_qtype.getScale();
-
-      double max_scale_2x = 2.0 * std::max(in_lhs_scale, in_rhs_scale);
-
-      const int32_t SHIFT_8_BIT = 20;
-      const int32_t SHIFT_16_BIT = 15;
-
-      int32_t input_shift =
-          (output_qtype.getStorageType().getIntOrFloatBitWidth() == 16)
-              ? SHIFT_16_BIT
-              : SHIFT_8_BIT;
-
-      double lhs_rescale_scale = in_lhs_scale / max_scale_2x;
-      double rhs_rescale_scale = in_rhs_scale / max_scale_2x;
-      double output_rescale_scale =
-          max_scale_2x / (output_scale * static_cast<double>(1 << input_shift));
-
-      Value op1_rescale_lhs = buildRescaleToInt32(
-          rewriter, op, op.getLhs(),
-          lhs_rescale_scale * static_cast<double>(1 << input_shift),
-          input_lhs_qtype.getZeroPoint());
-      Value op2_rescale_rhs = buildRescaleToInt32(
-          rewriter, op, op.getRhs(),
-          rhs_rescale_scale * static_cast<double>(1 << input_shift),
-          input_rhs_qtype.getZeroPoint());
+      Value op1_rescale_lhs =
+          buildRescaleToInt32(rewriter, op, op.getLhs(), lhsDerivedMultiplier,
+                              lhsDerivedShift, input_lhs_qtype.getZeroPoint());
+      Value op2_rescale_rhs =
+          buildRescaleToInt32(rewriter, op, op.getRhs(), rhsDerivedMultiplier,
+                              rhsDerivedShift, input_rhs_qtype.getZeroPoint());
 
       ShapedType rescale_type_output = output_type.clone(rewriter.getI32Type());
       auto op3_add_op1_op2 = rewriter.create<tosa::AddOp>(
           op->getLoc(), rescale_type_output, op1_rescale_lhs, op2_rescale_rhs);
+
       Value op4_rescale_op3 = buildRescaleFromInt32(
           rewriter, op, output_type, op3_add_op1_op2.getResult(),
-          output_rescale_scale, output_qtype.getZeroPoint());
+          resDerivedMultiplier, resDerivedShift, output_qtype.getZeroPoint());
 
       rewriter.replaceOp(op, {op4_rescale_op3});
     } else {

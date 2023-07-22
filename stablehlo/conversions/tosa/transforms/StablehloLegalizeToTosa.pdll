@@ -69,9 +69,6 @@ Pattern =>
   replace op<stablehlo.ceil>(input : Value<_: Tosa_Tensor>)
      with op<tosa.ceil>(input);
 Pattern =>
-  replace op<stablehlo.convert>(input : Value<_: Tosa_Tensor>)
-     with op<tosa.cast>(input);
-Pattern =>
   replace op<stablehlo.exponential>(input : Value<_: Tosa_Tensor>)
      with op<tosa.exp>(input);
 Pattern {
