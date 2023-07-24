@@ -473,8 +473,8 @@ struct ConvertStablehloWhileOp : public OpRewritePattern<stablehlo::WhileOp> {
   }
 };
 
-// #define INT_RESCALE
-#define FLOAT_RESCALE
+#define INT_RESCALE
+// #define FLOAT_RESCALE
 // #define STABLEHLO_TO_TOSA_LEGALIZE
 namespace {
 
@@ -561,6 +561,9 @@ Value buildRescaleToInt32(PatternRewriter& rewriter, Operation* op,
   assert(inputType);
 
 #if defined(FLOAT_RESCALE) || defined(INT_RESCALE)
+  DEBUG(llvm::dbgs() << "\nbuildRescaleToInt32\n"
+                     << "\tmultiplier: " << multiplier << "\tshift: " << shift
+                     << "\n");
   auto outputType = inputType.clone(rewriter.getI32Type());
   auto inputCasted =
       // rewriter.create<tosa::CastOp>(op->getLoc(), outputType, inputVal);
@@ -588,11 +591,13 @@ Value buildRescaleFromInt32(PatternRewriter& rewriter, Operation* op,
          "expected rescale input element type to be i32");
 
 #if defined(FLOAT_RESCALE) || defined(INT_RESCALE)
+  DEBUG(llvm::dbgs() << "\nbuildRescaleFromInt32\n"
+                     << "\tmultiplier: " << multiplier << "\tshift: " << shift
+                     << "\n");
   auto rescaledIntOutput = simulateRescaleOp(
       rewriter, op, input_type, input_val, multiplier, shift, 0, output_zp);
-  // return rewriter.create<tosa::CastOp>(op->getLoc(), output_type,
   return rewriter.create<stablehlo::ConvertOp>(op->getLoc(), output_type,
-                                       rescaledIntOutput);
+                                               rescaledIntOutput);
 #endif
 
 #ifdef STABLEHLO_TO_TOSA_LEGALIZE
@@ -646,15 +651,15 @@ void maxScale(int32_t lhsMultiplier, int32_t lhsShift, int32_t rhsMultiplier,
 
 void scalingDivide(int32_t numerator, int32_t denominator, int32_t shift,
                    int32_t& effective_multiplier, int32_t& effective_shift) {
-  while (numerator > (denominator << 31) && shift >= 2) {
-    numerator = numerator / 2;
-    shift = shift - 1;
-  }
+  // while (numerator > (denominator << 31) && shift >= 2) {
+  //   numerator = numerator / 2;
+  //   shift = shift - 1;
+  // }
 
-  while (numerator < denominator && shift < 62) {
-    numerator = 2 * numerator;
-    shift = shift + 1;
-  }
+  // while (numerator < denominator && shift < 62) {
+  //   numerator = 2 * numerator;
+  //   shift = shift + 1;
+  // }
 
   effective_multiplier = numerator / denominator;
   effective_shift = shift;
@@ -688,10 +693,10 @@ void deriveRescaleParametersForAddOpUsingIntComp(
                 commonShift - (resShift - input_shift), resDerivedMultiplier,
                 resDerivedShift);
 
-  lhsDerivedMultiplier = lhsRescaleMultiplier;
-  lhsDerivedShift = lhsRescaleShift - input_shift;
-  rhsDerivedMultiplier = rhsRescaleMultiplier;
-  rhsDerivedShift = rhsRescaleShift - input_shift;
+  lhsDerivedMultiplier = lhsRescaleMultiplier << input_shift;
+  lhsDerivedShift = lhsRescaleShift;
+  rhsDerivedMultiplier = rhsRescaleMultiplier << input_shift;
+  rhsDerivedShift = rhsRescaleShift;
 }
 #endif
 
@@ -733,7 +738,7 @@ struct ConvertStablehloAddOp : public OpRewritePattern<stablehlo::AddOp> {
 #endif
 
     if (input_lhs_qtype && input_rhs_qtype && output_qtype) {
-      llvm::errs() << "Handling quantized types\n";
+      DEBUG(llvm::dbgs() << "Handling quantized types\n");
 
       int32_t lhsDerivedMultiplier, lhsDerivedShift, rhsDerivedMultiplier,
           rhsDerivedShift, resDerivedMultiplier, resDerivedShift;
