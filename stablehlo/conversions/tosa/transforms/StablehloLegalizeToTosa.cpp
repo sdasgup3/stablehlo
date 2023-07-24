@@ -473,37 +473,10 @@ struct ConvertStablehloWhileOp : public OpRewritePattern<stablehlo::WhileOp> {
   }
 };
 
-#define INT_RESCALE
-// #define FLOAT_RESCALE
-// #define STABLEHLO_TO_TOSA_LEGALIZE
+// #define INT_RESCALE
+#define FLOAT_RESCALE
 namespace {
 
-#ifdef STABLEHLO_TO_TOSA_LEGALIZE
-// Create a TOSA rescale op from TFLite scaling, zero points and rounding mode
-Value buildRescale(PatternRewriter& rewriter, Operation* op,
-                   ShapedType output_type, Value input_val, double scale,
-                   int64_t input_zp, int64_t output_zp, bool double_round,
-                   bool scale32) {
-  int32_t multiplier;
-  int32_t shift;
-
-  int32_t scale_width = scale32 ? 32 : 16;
-
-  computeMultiplierAndShift(scale, multiplier, shift, scale_width);
-  auto rescale_op = rewriter.create<tosa::RescaleOp>(
-      op->getLoc(), output_type, input_val,
-      rewriter.getI32IntegerAttr(input_zp),
-      rewriter.getI32IntegerAttr(output_zp),
-      rewriter.getDenseI32ArrayAttr({multiplier}),
-      rewriter.getDenseI32ArrayAttr({shift}), rewriter.getBoolAttr(scale32),
-      rewriter.getBoolAttr(double_round),
-      rewriter.getBoolAttr(/*per_channel*/ false));
-
-  return rescale_op.getResult();
-}
-#endif
-
-#if defined(FLOAT_RESCALE) || defined(INT_RESCALE)
 // Create a 32-bit integer constant operator from an int
 Value getTosaConstTensorSingleI32(PatternRewriter& rewriter, Operation* op,
                                   int32_t val) {
@@ -550,7 +523,6 @@ Value simulateRescaleOp(PatternRewriter& rewriter, Operation* op,
                                              output_zp_val);
   return result.getResult();
 }
-#endif
 
 // Creates TOSA rescale op with int32 output
 Value buildRescaleToInt32(PatternRewriter& rewriter, Operation* op,
@@ -560,23 +532,12 @@ Value buildRescaleToInt32(PatternRewriter& rewriter, Operation* op,
   auto inputType = dyn_cast<mlir::ShapedType>(inputVal.getType());
   assert(inputType);
 
-#if defined(FLOAT_RESCALE) || defined(INT_RESCALE)
-  DEBUG(llvm::dbgs() << "\nbuildRescaleToInt32\n"
-                     << "\tmultiplier: " << multiplier << "\tshift: " << shift
-                     << "\n");
   auto outputType = inputType.clone(rewriter.getI32Type());
   auto inputCasted =
       // rewriter.create<tosa::CastOp>(op->getLoc(), outputType, inputVal);
       rewriter.create<stablehlo::ConvertOp>(op->getLoc(), outputType, inputVal);
   return simulateRescaleOp(rewriter, op, outputType, inputCasted, multiplier,
                            shift, inputZp, 0);
-#endif
-
-#ifdef STABLEHLO_TO_TOSA_LEGALIZE
-  auto outputType = inputType.clone(rewriter.getI32Type());
-  return buildRescale(rewriter, op, outputType, inputVal, inputScale, inputZp,
-                      0, /*double_round*/ false, /*scale_32*/ true);
-#endif
 }
 
 // Creates TOSA rescale op with int32 input
@@ -590,20 +551,10 @@ Value buildRescaleFromInt32(PatternRewriter& rewriter, Operation* op,
   assert(input_type && input_type.getElementType().isInteger(32) &&
          "expected rescale input element type to be i32");
 
-#if defined(FLOAT_RESCALE) || defined(INT_RESCALE)
-  DEBUG(llvm::dbgs() << "\nbuildRescaleFromInt32\n"
-                     << "\tmultiplier: " << multiplier << "\tshift: " << shift
-                     << "\n");
   auto rescaledIntOutput = simulateRescaleOp(
       rewriter, op, input_type, input_val, multiplier, shift, 0, output_zp);
   return rewriter.create<stablehlo::ConvertOp>(op->getLoc(), output_type,
                                                rescaledIntOutput);
-#endif
-
-#ifdef STABLEHLO_TO_TOSA_LEGALIZE
-  return buildRescale(rewriter, op, output_type, input_val, output_scale, 0,
-                      output_zp, /*double_round*/ false, true);
-#endif
 }
 
 #ifdef FLOAT_RESCALE
@@ -738,7 +689,6 @@ struct ConvertStablehloAddOp : public OpRewritePattern<stablehlo::AddOp> {
 #endif
 
     if (input_lhs_qtype && input_rhs_qtype && output_qtype) {
-      DEBUG(llvm::dbgs() << "Handling quantized types\n");
 
       int32_t lhsDerivedMultiplier, lhsDerivedShift, rhsDerivedMultiplier,
           rhsDerivedShift, resDerivedMultiplier, resDerivedShift;
