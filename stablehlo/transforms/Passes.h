@@ -66,6 +66,15 @@ void populateStablehloCanonicalizationPatterns(MLIRContext *context,
                                                RewritePatternSet *patterns,
                                                PatternBenefit benefit = 1);
 
+/// Collection of shape dialect to StableHLO patterns.
+void populateShapeToStablehloPatterns(MLIRContext *context,
+                                      RewritePatternSet *patterns);
+
+//// Additional pass constructors ////
+
+std::unique_ptr<OperationPass<ModuleOp>> createStablehloRefineArgumentsPass(
+    TypeRange refinedTypes);
+
 //// Pass pipelines ////
 
 // StableHLO consumers can add this pipeline to convert portable artifacts to

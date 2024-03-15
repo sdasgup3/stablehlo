@@ -44,23 +44,6 @@ func.func @reduce_mixed_dynamism(%arg0: tensor<4x4xf32>, %arg1 : tensor<f32>)
 
 // -----
 
-// CHECK-LABEL: func @reduce_unranked
-func.func @reduce_unranked(%arg0: tensor<4x4xf32>, %arg1: tensor<4x4xf32>,
-    %arg2: tensor<*xf32>, %arg3: tensor<*xf32>) -> (tensor<*xf32>, tensor<*xf32>) {
-  %0:2 = "stablehlo.reduce"(%arg0, %arg1, %arg2, %arg3) ({
-
-  ^bb0(%arg4: tensor<*xf32>, %arg5: tensor<*xf32>, %arg6: tensor<*xf32>, %arg7: tensor<*xf32>):
-    %1 = "stablehlo.add"(%arg4, %arg6) : (tensor<*xf32>, tensor<*xf32>) -> tensor<*xf32>
-    %2 = "stablehlo.add"(%arg5, %arg7) : (tensor<*xf32>, tensor<*xf32>) -> tensor<*xf32>
-    "stablehlo.return"(%1, %2) : (tensor<*xf32>, tensor<*xf32>) -> ()
-
-  }) {dimensions = array<i64: 1>} : (tensor<4x4xf32>, tensor<4x4xf32>, tensor<*xf32>, tensor<*xf32>) -> (tensor<*xf32>, tensor<*xf32>)
-
-  func.return %0#0, %0#1 : tensor<*xf32>, tensor<*xf32>
-}
-
-// -----
-
 // Verifies that dynamic input type is allowed with reducer function with static shapes.
 // CHECK-LABEL: func @reduce_verify_dynamic_operand
 func.func @reduce_verify_dynamic_operand(%arg0: tensor<8x?xf32>, %arg1 : tensor<4xf32>)
@@ -75,23 +58,6 @@ func.func @reduce_verify_dynamic_operand(%arg0: tensor<8x?xf32>, %arg1 : tensor<
   }) {dimensions = array<i64: 0>} : (tensor<8x?xf32>, tensor<4xf32>) -> tensor<?xf32>
 
   func.return %0: tensor<?xf32>
-}
-
-// -----
-
-// CHECK-LABEL: func @reduce_mix_rank_and_unranked
-func.func @reduce_mix_rank_and_unranked(%arg0: tensor<4x4xf32>, %arg1: tensor<*xf32>,
-    %arg2: tensor<4xf32>, %arg3: tensor<*xf32>) -> (tensor<4xf32>, tensor<*xf32>) {
-  %0:2 = "stablehlo.reduce"(%arg0, %arg1, %arg2, %arg3) ({
-
-  ^bb0(%arg4: tensor<4xf32>, %arg5: tensor<*xf32>, %arg6: tensor<4xf32>, %arg7: tensor<*xf32>):
-    %1 = "stablehlo.add"(%arg4, %arg6) : (tensor<4xf32>, tensor<4xf32>) -> tensor<4xf32>
-    %2 = "stablehlo.add"(%arg5, %arg7) : (tensor<*xf32>, tensor<*xf32>) -> tensor<*xf32>
-    "stablehlo.return"(%1, %2) : (tensor<4xf32>, tensor<*xf32>) -> ()
-
-  }) {dimensions = array<i64: 1>} : (tensor<4x4xf32>, tensor<*xf32>, tensor<4xf32>, tensor<*xf32>) -> (tensor<4xf32>, tensor<*xf32>)
-
-  func.return %0#0, %0#1 : tensor<4xf32>, tensor<*xf32>
 }
 
 // -----
@@ -225,20 +191,6 @@ func.func @reduce_c4(%arg0: tensor<?x?xf32>, %arg1 : tensor<f32>)
   }) {dimensions = array<i64: 2>} : (tensor<?x?xf32>, tensor<f32>) -> tensor<?xf32>
 
   func.return %0: tensor<?xf32>
-}
-
-// -----
-
-func.func @reduce_c4(%arg0: tensor<*xf32>, %arg1 : tensor<*xf32>)
-    -> (tensor<*xf32>) {
-
-  // expected-error@+1 {{Out-of-bounds dimension -1, expected to be > 0}}
-  %0 = "stablehlo.reduce"(%arg0, %arg1) ({
-  ^bb0(%arg2: tensor<*xf32>, %arg3: tensor<*xf32> ):
-    %1 = "stablehlo.add"(%arg2, %arg3) : (tensor<*xf32>, tensor<*xf32>) -> tensor<*xf32>
-    "stablehlo.return"(%1) : (tensor<*xf32>) -> ()
-  }) {dimensions = array<i64: -1>} : (tensor<*xf32>, tensor<*xf32>) -> tensor<*xf32>
-  func.return %0: tensor<*xf32>
 }
 
 // -----
@@ -490,7 +442,7 @@ func.func @reduce_c6(%arg0: tensor<4x4x!quant.uniform<i8:f64, 2.000000e+00:15>>,
 // -----
 
 func.func @reduce_parsing_pretty_reduce_non_commutative(%arg0: tensor<?x?xf32> , %arg1: tensor<f32> ) -> tensor<?xf32> {
-  // expected-error@+1 {{expected the inner-op to be a commutative binary-op from stablehlo dialect, zero region, producing single result}}
+  // expected-error@+1 {{expected the inner-op to be a commutative binary-op from the stablehlo dialect, with zero region, producing single result}}
  %0 = stablehlo.reduce(%arg0 init: %arg1) applies stablehlo.divide across dimensions = [1] : (tensor<?x?xf32>, tensor<f32>) -> tensor<?xf32> loc("foo")
  func.return %0 : tensor<?xf32>
 }
@@ -498,7 +450,7 @@ func.func @reduce_parsing_pretty_reduce_non_commutative(%arg0: tensor<?x?xf32> ,
 // -----
 
 func.func @reduce_parsing_pretty_reduce_wrong_dialect(%arg0: tensor<?x?xf32> , %arg1: tensor<f32> ) -> tensor<?xf32> {
-  // expected-error@+1 {{expected the inner-op to be a commutative binary-op from stablehlo dialect, zero region, producing single result}}
+  // expected-error@+1 {{expected the inner-op to be a commutative binary-op from the stablehlo dialect, with zero region, producing single result}}
  %0 = stablehlo.reduce(%arg0 init: %arg1) applies std.add across dimensions = [1] : (tensor<?x?xf32>, tensor<f32>) -> tensor<?xf32> loc("foo")
  func.return %0 : tensor<?xf32>
 }
@@ -506,7 +458,7 @@ func.func @reduce_parsing_pretty_reduce_wrong_dialect(%arg0: tensor<?x?xf32> , %
 // -----
 
 func.func @reduce_parsing_pretty_reduce_non_binary(%arg0: tensor<?x?xf32> , %arg1: tensor<f32> ) -> tensor<?xf32> {
-  // expected-error@+1 {{expected the inner-op to be a commutative binary-op from stablehlo dialect, zero region, producing single result}}
+  // expected-error@+1 {{expected the inner-op to be a commutative binary-op from the stablehlo dialect, with zero region, producing single result}}
  %0 = stablehlo.reduce(%arg0 init: %arg1) applies stablehlo.reshape across dimensions = [1] : (tensor<?x?xf32>, tensor<f32>) -> tensor<?xf32> loc("foo")
  func.return %0 : tensor<?xf32>
 }

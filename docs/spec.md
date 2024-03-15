@@ -610,7 +610,7 @@ tensor. Depending on the element type, does the following:
 // %result: [2, 0, 2]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/abs.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/abs.mlir)
 
 ### add
 
@@ -662,7 +662,7 @@ Performs element-wise addition of two tensors `lhs` and `rhs` and produces a
 // %result: [[6, 8], [10, 12]]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/add.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/add.mlir)
 
 ### after_all
 
@@ -692,7 +692,7 @@ it only exists to establish data dependencies from `result` to `inputs`.
 %result = "stablehlo.after_all"(%input0, %input1) : (!stablehlo.token, !stablehlo.token) -> !stablehlo.token
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/after_all.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/after_all.mlir)
 
 ### all_gather
 
@@ -767,7 +767,7 @@ Afterwards, within each `process_group`:
 // %result@(1, 0): [[1, 2, 5, 6], [3, 4, 7, 8]]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/all_gather.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/all_gather.mlir)
 
 ### all_reduce
 
@@ -846,13 +846,13 @@ Afterwards, within each `process_group`:
 // %result@(1, 0): [6, 8, 10, 12]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/all_reduce.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/all_reduce.mlir)
 
 ### all_to_all
 
 #### Semantics
 
-![](images/spec/all_to_all.svg)
+![all_to_all](images/spec/all_to_all.svg)
 
 Within each process group in the StableHLO process grid, splits the values of
 the `operand` tensor along `split_dimension` into parts, scatters the split
@@ -934,7 +934,7 @@ Afterwards, within each `process_group`:
 //                  [15, 16]]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/all_to_all.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/all_to_all.mlir)
 
 ### and
 
@@ -972,7 +972,7 @@ tensor. Depending on the element type, does the following:
 // %result: [[1, 2], [3, 0]]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/and.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/and.mlir)
 
 ### atan2
 
@@ -1011,7 +1011,7 @@ Performs element-wise atan2 operation on `lhs` and `rhs` tensor and produces a
 // %result: [0.0, 1.57079637, -1.57079637] // [0.0, pi/2, -pi/2]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/atan2.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/atan2.mlir)
 
 ### batch_norm_grad
 
@@ -1375,7 +1375,7 @@ implementation-defined as well.
 // %result: [0xCDEF, 0x89AB, 0x4567, 0x0123] // little-endian representation
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/bitcast_convert.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/bitcast_convert.mlir)
 
 ### broadcast_in_dim
 
@@ -1446,7 +1446,7 @@ in the `operand` tensor and produces a `result` tensor. More formally,
 //          ]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/broadcast_in_dim.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/broadcast_in_dim.mlir)
 
 ### case
 
@@ -1494,7 +1494,7 @@ where:
 // %result1: [1, 1]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/case.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/case.mlir)
 
 ### cbrt
 
@@ -1531,7 +1531,7 @@ Performs element-wise cubic root operation on `operand` tensor and produces a
 // %result: [0.0, 1.0, 2.0, 3.0]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/cbrt.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/cbrt.mlir)
 
 ### ceil
 
@@ -1566,7 +1566,7 @@ specification. For quantized types, performs
 // %result: [-0.0, -0.0, 1.0, 1.0, 2.0]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/ceil.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/ceil.mlir)
 
 ### cholesky
 
@@ -1670,7 +1670,7 @@ for this operation ([#560](https://github.com/openxla/stablehlo/issues/560)).
 // %result: [5, 13, 20]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/clamp.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/clamp.mlir)
 
 ### collective_broadcast
 
@@ -1690,22 +1690,23 @@ Afterwards, `result@process` is given by:
 
 * `operand@process_groups[i, 0]` if there exists an `i` such that the process is
   in `process_groups[i]`.
-* `broadcast_in_dim(constant(0, element_type(result)), [], type(result))`
+* `broadcast_in_dim(constant(is_quantized(result) ? quantize(0,
+  element_type(result)) : 0, element_type(result)), [], type(result))`
   otherwise.
 
 #### Inputs
 
 | Label | Name             | Type                                                             | Constraints |
 |-------|------------------|------------------------------------------------------------------|-------------|
-| (I1)  | `operand`        | tensor                                                           | (C3)        |
+| (I1)  | `operand`        | tensor or per-tensor quantized tensor                            | (C3)        |
 | (I2)  | `replica_groups` | variadic number of 1-dimensional tensor constants of type `si64` | (C1), (C2)  |
 | (I3)  | `channel_id`     | constant of type `si64`                                          |             |
 
 #### Outputs
 
-| Name     | Type   | Constraints |
-|----------|--------|-------------|
-| `result` | tensor | (C3)        |
+| Name     | Type                                  | Constraints |
+|----------|---------------------------------------|-------------|
+| `result` | tensor or per-tensor quantized tensor | (C3)        |
 
 #### Constraints
 
@@ -1798,7 +1799,7 @@ Afterwards, `result@process` is given by:
 // %result@(2, 0): [[5, 6], [7, 8]]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/collective_permute.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/collective_permute.mlir)
 
 ### compare
 
@@ -1882,7 +1883,7 @@ comparison_direction)`.
 // %result: [true, false]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/compare.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/compare.mlir)
 
 ### complex
 
@@ -1920,7 +1921,57 @@ imaginary values, `lhs` and `rhs`, and produces a `result` tensor.
 // %result: [(1.0, 2.0), (3.0, 4.0)]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/complex.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/complex.mlir)
+
+### composite
+
+#### Semantics
+
+Encapsulates an operation made up (composed) of other StableHLO operations,
+taking `inputs` and `composite_attributes` and producing `results`. The
+semantics of the op are implemented by the `decomposition` attribute. The
+`composite` op can be replaced with its decomposition without changing program
+semantics. In cases where inlining the decomposition does not provide the same
+op semantics, prefer using `custom_call`.
+
+The `version` field (defaults to `0`) is used to denote when a composite's
+semantics change.
+
+#### Inputs
+
+| Label | Name                                   | Type                                        |
+|-------|----------------------------------------|---------------------------------------------|
+| (I1)  | `inputs`                               | variadic number of values                   |
+| (I2)  | `name`                                 | constant of type `string`                   |
+| (I3)  | `composite_attributes`                 | attribute dictionary                        |
+| (I4)  | `decomposition`                        | constant of type `string`                   |
+| (I5)  | `version`                              | constant of type `si32`                     |
+
+#### Outputs
+
+| Name      | Type                      |
+|-----------|---------------------------|
+| `results` | variadic number of values |
+
+#### Constraints
+
+* (C1) `is_namespaced_op_name(name)`
+* (C2) `is_defined_in_parent_scope(decomposition)`
+* (C3) `types(inputs...) == input_types(decomposition)`
+* (C4) `types(results...) == output_types(decomposition)`
+
+#### Examples
+
+```mlir
+%results = "stablehlo.composite"(%input0, %input1) {
+  name = "my_namespace.my_op",
+  decomposition = @my_op,
+  composite_attributes = { my_attribute = "my_value" },
+  version = 1 : i32
+} : (tensor<f32>, tensor<f32>) -> tensor<f32>
+```
+
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/composite.mlir)
 
 ### concatenate
 
@@ -1968,7 +2019,7 @@ arguments and produces a `result` tensor. More formally,
 // %result: [[1, 2], [3, 4], [5, 6], [7, 8]]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/concatenate.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/concatenate.mlir)
 
 ### constant
 
@@ -2001,7 +2052,7 @@ Produces an `output` tensor from a constant `value`.
 // %output: [[0.0, 1.0], [2.0, 3.0]]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/constant.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/constant.mlir)
 
 ### convert
 
@@ -2067,7 +2118,7 @@ into `convert` ([#1576](https://github.com/openxla/stablehlo/issues/1576)).
 // %result: [(-1.0, 0.0), (0.0, 0.0), (1.0, 0.0)]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/convert.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/convert.mlir)
 
 ### convolution
 
@@ -2077,7 +2128,7 @@ Computes dot products between windows of `lhs` and slices of `rhs` and produces
 `result`. The following diagram shows how elements in `result` are computed from
 `lhs` and `rhs` using a concrete example.
 
-![](images/spec/convolution.svg)
+![convolution](images/spec/convolution.svg)
 
 More formally, consider the following reframing of the inputs in terms of `lhs`
 in order to be able to express windows of `lhs`:
@@ -2314,7 +2365,7 @@ Performs element-wise cosine operation on `operand` tensor and produces a
 // %result: [[1.0, 0.0], [-1.0, 0.0]]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/cosine.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/cosine.mlir)
 
 ### count_leading_zeros
 
@@ -2347,7 +2398,7 @@ tensor and produces a `result` tensor.
 // %result: [[64, 63], [56, 0]]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/count_leading_zeros.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/count_leading_zeros.mlir)
 
 ### custom_call
 
@@ -2432,7 +2483,7 @@ produces a `result` tensor. Depending on the element type, does the following:
 // %result: [5.66666651, -5.66666651, -5.66666651, 5.66666651]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/divide.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/divide.mlir)
 
 ### dot_general
 
@@ -2566,7 +2617,7 @@ planning to address this in
 //          ]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/dot_general.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/dot_general.mlir)
 
 ### dynamic_slice
 
@@ -2624,7 +2675,7 @@ contain the sizes of the slice for each dimension. More formally,
 //          ]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/dynamic_slice.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/dynamic_slice.mlir)
 
 ### dynamic_update_slice
 
@@ -2688,7 +2739,7 @@ More formally, `result[result_index]` is defined as:
 //          ]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/dynamic_update_slice.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/dynamic_update_slice.mlir)
 
 ### exponential
 
@@ -2726,7 +2777,7 @@ Performs element-wise exponential operation on `operand` tensor and produces a
 // %result: [[1.0, 2.7182818284590451], [7.3890560989306504, 20.085536923187668]]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/exponential.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/exponential.mlir)
 
 ### exponential_minus_one
 
@@ -2764,7 +2815,7 @@ produces a `result` tensor. Depending on the element type, does the following:
 // %result: [0.0, 1.71828187]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/exponential_minus_one.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/exponential_minus_one.mlir)
 
 ### fft
 
@@ -2912,7 +2963,7 @@ specification. For quantized types, performs
 // %result: [-1.0, -1.0, 0.0, 0.0, 2.0]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/floor.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/floor.mlir)
 
 ### gather
 
@@ -2925,7 +2976,7 @@ The following diagram shows how elements in `result` map on elements in
 `operand` using a concrete example. The diagram picks a few example `result`
 indices and explains in detail which `operand` indices they correspond to.
 
-![](images/spec/gather.svg)
+![gather](images/spec/gather.svg)
 
 More formally, `result[result_index] = operand[operand_index]` where:
 
@@ -3032,21 +3083,22 @@ behavior is undefined. More formally, for all `i1 < i2` from `indices(result)`,
 //          ]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/gather.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/gather.mlir)
 
 ### get_dimension_size
 
 #### Semantics
 
 Produces the size of the given `dimension` of the `operand`. More formally,
-`result = dim(operand, dimension)`.
+`result = dim(operand, dimension)`. The Semantics concerns only with the shape
+component of the type. The element-type could be anything.
 
 #### Inputs
 
-| Label | Name        | Type                    | Constraints |
-|-------|-------------|-------------------------|-------------|
-| (I1)  | `operand`   | tensor                  | (C1)        |
-| (I2)  | `dimension` | constant of type `si64` | (C1)        |
+| Label | Name        | Type                       | Constraints |
+|-------|-------------|----------------------------|-------------|
+| (I1)  | `operand`   | tensor or quantized tensor | (C1)        |
+| (I2)  | `dimension` | constant of type `si64`    | (C1)        |
 
 #### Outputs
 
@@ -3068,7 +3120,7 @@ Produces the size of the given `dimension` of the `operand`. More formally,
 // %result: 3
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/get_dimension_size.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/get_dimension_size.mlir)
 
 ### get_tuple_element
 
@@ -3105,7 +3157,7 @@ Extracts element at `index` position of the `operand` tuple and produces a
 // %result: [1.0, 2.0]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/tuple_and_get_tuple_element.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/tuple_and_get_tuple_element.mlir)
 
 ### if
 
@@ -3149,7 +3201,7 @@ pred ? true_branch() : false_branch()`.
 // %result: 10
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/if.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/if.mlir)
 
 ### imag
 
@@ -3187,7 +3239,7 @@ constant(0, element_type(result))`.
 // %result: [2.0, 4.0]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/imag.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/imag.mlir)
 
 ### infeed
 
@@ -3237,7 +3289,7 @@ separate outputs to improve clarity
 // results1#0: [[5, 6], [7, 8]]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/infeed.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/infeed.mlir)
 
 ### iota
 
@@ -3290,7 +3342,7 @@ result_index[iota_dimension], element_type(output))`.
 //          ]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/iota.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/iota.mlir)
 
 ### is_finite
 
@@ -3326,7 +3378,7 @@ always `true`.
 // %y: [false, false, false, true, true, true, true]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/is_finite.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/is_finite.mlir)
 
 ### log
 
@@ -3363,7 +3415,7 @@ Performs element-wise logarithm operation on `operand` tensor and produces a
 // %result: [[0.0, 0.69314718055994529], [1.0986122886681098, 1.3862943611198906]]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/log.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/log.mlir)
 
 ### log_plus_one
 
@@ -3401,7 +3453,7 @@ produces a `result` tensor. Depending on the element type, does the following:
 // %result: [0.0, -6.90776825, 2.07944155, 2.0, 2.77258873]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/log_plus_one.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/log_plus_one.mlir)
 
 ### logistic
 
@@ -3439,7 +3491,7 @@ Performs element-wise logistic operation on `operand` tensor and produces a
 // %result: [[0.5, 0.73105858], [0.88079708, 0.95257413]]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/logistic.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/logistic.mlir)
 
 ### map
 
@@ -3489,7 +3541,7 @@ the future ([#487](https://github.com/openxla/stablehlo/issues/487)).
 // %result: [[0, 5], [12, 21]]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/map.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/map.mlir)
 
 ### maximum
 
@@ -3534,7 +3586,7 @@ Performs element-wise max operation on tensors `lhs` and `rhs` and produces a
 // %result: [[5, 6], [7, 8]]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/maximum.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/maximum.mlir)
 
 ### minimum
 
@@ -3579,7 +3631,7 @@ Performs element-wise min operation on tensors `lhs` and `rhs` and produces a
 // %result: [[1, 2], [3, 4]]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/minimum.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/minimum.mlir)
 
 ### multiply
 
@@ -3621,7 +3673,7 @@ Performs element-wise product of two tensors `lhs` and `rhs` and produces a
 // %result: [[5, 12], [21, 32]]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/multiply.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/multiply.mlir)
 
 ### negate
 
@@ -3668,7 +3720,7 @@ tensor. Depending on the element type, does the following:
 // %result: [-2.5, -0.0]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/negate.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/negate.mlir)
 
 ### not
 
@@ -3710,7 +3762,7 @@ Depending on the element type, does the following:
 // %result: [false, true]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/not.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/not.mlir)
 
 ### optimization_barrier
 
@@ -3747,7 +3799,7 @@ an identity, i.e. `result = operand`.
 // %result1: 1.0
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/optimization_barrier.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/optimization_barrier.mlir)
 
 ### or
 
@@ -3792,7 +3844,7 @@ tensor. Depending on the element type, does the following:
 // %result: [[false, true], [true, true]]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/or.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/or.mlir)
 
 ### outfeed
 
@@ -3824,7 +3876,7 @@ Semantics of `outfeed_config` is implementation-defined.
 } : (tensor<2x2x2xi64>, !stablehlo.token) -> !stablehlo.token
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/outfeed.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/outfeed.mlir)
 
 ### pad
 
@@ -3898,7 +3950,7 @@ More formally, `result[result_index]` is defined as:
 //          ]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/pad.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/pad.mlir)
 
 ### partition_id
 
@@ -3918,7 +3970,7 @@ Produces `partition_id` of the current process.
 %result = "stablehlo.partition_id"() : () -> tensor<ui32>
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/partition_id.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/partition_id.mlir)
 
 ### popcnt
 
@@ -3951,7 +4003,7 @@ and produces a `result` tensor.
 // %result: [0, 1, 1, 7]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/popcnt.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/popcnt.mlir)
 
 ### power
 
@@ -3991,7 +4043,7 @@ produces a `result` tensor. Depending on the element type, does the following:
 // %result: [4.0, 0.0, -nan, 25.0, 0.333333343, inf]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/power.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/power.mlir)
 
 ### real
 
@@ -4028,7 +4080,7 @@ tensor. More formally, for each element `x`:
 // %result: [1.0, 3.0]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/real.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/real.mlir)
 
 ### recv
 
@@ -4080,7 +4132,7 @@ separate outputs to improve clarity
 } : (!stablehlo.token) -> (tensor<2x2xi64>, !stablehlo.token)
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/send_recv.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/send_recv.mlir)
 
 ### reduce
 
@@ -4160,7 +4212,7 @@ More formally, `results...[j0, ..., jR-1] = reduce(input_slices_converted)` wher
 // %result = [15]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/reduce.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/reduce.mlir)
 
 ### reduce_precision
 
@@ -4218,13 +4270,13 @@ More formally:
 // %output: [0x7FF0000000000000, 0x7FFFFFFFFFFFFFFF, 0.0, 0.0, 65504.0, 0x7FF0000000000000]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/reduce_precision.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/reduce_precision.mlir)
 
 ### reduce_scatter
 
 #### Semantics
 
-![](images/spec/reduce_scatter.svg)
+![reduce_scatter](images/spec/reduce_scatter.svg)
 
 Within each process group in the StableHLO process grid, performs reduction,
 using `computations`, over the values of the `operand` tensor from each process,
@@ -4310,7 +4362,7 @@ Afterwards, within each `process_group`:
 //                  [22, 24]]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/reduce_scatter.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/reduce_scatter.mlir)
 
 ### reduce_window
 
@@ -4322,7 +4374,7 @@ and produces `results`.
 The following diagram shows how elements in `results...` are computed from
 `inputs...` using a concrete example.
 
-![](images/spec/reduce_window.svg)
+![reduce_window](images/spec/reduce_window.svg)
 
 More formally,
 `results...[result_index] = reduce(windows, init_values, axes(inputs...), body)`
@@ -4401,7 +4453,7 @@ More formally,
 // %result = [[0, 0], [3, 4]]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/reduce_window.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/reduce_window.mlir)
 
 ### remainder
 
@@ -4452,7 +4504,7 @@ nearest to the exact value of `lhs/rhs` with ties to even.
 // %result: [2, -2, 2, -2]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/remainder.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/remainder.mlir)
 
 ### replica_id
 
@@ -4472,7 +4524,7 @@ Produces `replica_id` of the current process.
 %result = "stablehlo.replica_id"() : () -> tensor<ui32>
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/replica_id.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/replica_id.mlir)
 
 ### reshape
 
@@ -4527,7 +4579,7 @@ ordering of `index_space(result)` and `index_space(operand)`.
 // %result: [[1, 2], [3, 4], [5, 6]]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/reshape.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/reshape.mlir)
 
 ### reverse
 
@@ -4570,7 +4622,7 @@ and produces a `result` tensor. More formally,
 // %result: [[2, 1], [4, 3], [6, 5]]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/reverse.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/reverse.mlir)
 
 ### rng
 
@@ -4721,7 +4773,7 @@ quantized types, performs
 // %result: [-3.0, 0.0, 1.0, 1.0, 3.0]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/round_nearest_afz.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/round_nearest_afz.mlir)
 
 ### round_nearest_even
 
@@ -4757,7 +4809,7 @@ specification. For quantized types, performs
 // %result: [-2.0, 0.0, 0.0, 1.0, 2.0]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/round_nearest_even.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/round_nearest_even.mlir)
 
 ### rsqrt
 
@@ -4794,7 +4846,7 @@ produces a `result` tensor. Depending on the element type, does the following:
 // %result: [[1.0, 0.5], [0.33333343, 0.2]]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/rsqrt.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/rsqrt.mlir)
 
 ### scatter
 
@@ -4809,7 +4861,7 @@ The following diagram shows how elements in `updates...` map on elements in
 `updates...` indices and explains in detail which `results...` indices they
 correspond to.
 
-![](images/spec/scatter.svg)
+![scatter](images/spec/scatter.svg)
 
 More formally, for all `update_index` in `index_space(updates[0])`:
 
@@ -4947,7 +4999,7 @@ undefined.
 //          ]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/scatter.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/scatter.mlir)
 
 ### select
 
@@ -4989,7 +5041,7 @@ pred[result_index]`. For quantized types, performs
 // %result: [[5, 2], [3, 8]]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/select.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/select.mlir)
 
 ### select_and_scatter
 
@@ -5002,7 +5054,7 @@ a `result` tensor.
 The following diagram shows how elements in `result` are computed from
 `operand` and `source` using a concrete example.
 
-![](images/spec/select_and_scatter.svg)
+![select_and_scatter](images/spec/select_and_scatter.svg)
 
 More formally:
 
@@ -5097,7 +5149,7 @@ More formally:
 // %result: [[0, 0], [0, 0], [5, 14], [7, 0]]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/select_and_scatter.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/select_and_scatter.mlir)
 
 ### send
 
@@ -5142,7 +5194,7 @@ implementation-defined. This flag duplicates the information provided in
 } : (tensor<2x2xi64>, !stablehlo.token) -> !stablehlo.token
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/send_recv.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/send_recv.mlir)
 
 ### shift_left
 
@@ -5177,7 +5229,7 @@ of bits and produces a `result` tensor.
 // %result: [-2, 0, 8]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/shift_left.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/shift_left.mlir)
 
 ### shift_right_arithmetic
 
@@ -5212,7 +5264,7 @@ Performs element-wise arithmetic right-shift operation on the `lhs` tensor by
 // %result: [-1, 0, 1]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/shift_right_arithmetic.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/shift_right_arithmetic.mlir)
 
 ### shift_right_logical
 
@@ -5247,7 +5299,7 @@ number of bits and produces a `result` tensor.
 // %result: [9223372036854775807, 0, 1]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/shift_right_logical.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/shift_right_logical.mlir)
 
 ### sign
 
@@ -5304,7 +5356,7 @@ For quantized types, performs
 // %result: [0x7FFFFFFFFFFFFFFF, -1.0, -0.0, 0.0, 1.0]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/sign.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/sign.mlir)
 
 ### sine
 
@@ -5344,7 +5396,7 @@ tensor. Depending on the element type, does the following:
 // %result: [[0.0, 1.0], [0.0, -1.0]]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/sine.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/sine.mlir)
 
 ### slice
 
@@ -5402,7 +5454,7 @@ More formally, `result[result_index] = operand[operand_index]` where
 //           ]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/slice.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/slice.mlir)
 
 ### sort
 
@@ -5490,7 +5542,7 @@ More formally, for all `result_index` in `index_space(results[0])`:
 // %result1 = [[1, 2, 1], [3, 2, 3]]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/sort.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/sort.mlir)
 
 ### sqrt
 
@@ -5527,7 +5579,7 @@ Performs element-wise square root operation on `operand` tensor and produces a
 // %result: [[0.0, 1.0], [2.0, 3.0]]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/sqrt.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/sqrt.mlir)
 
 ### subtract
 
@@ -5568,7 +5620,7 @@ Performs element-wise subtraction of two tensors `lhs` and `rhs` and produces a
 // %result: [[1, 2], [3, 4]]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/subtract.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/subtract.mlir)
 
 ### tanh
 
@@ -5606,7 +5658,7 @@ produces a `result` tensor. Depending on the element type, does the following:
 // %result: [-0.76159416, 0.0, 0.76159416]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/tanh.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/tanh.mlir)
 
 ### transpose
 
@@ -5657,7 +5709,7 @@ where `result_index[d] = operand_index[permutation[d]]`.
 //          ]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/transpose.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/transpose.mlir)
 
 ### triangular_solve
 
@@ -5770,7 +5822,7 @@ Produces a `result` tuple from values `val`.
 // %result: ([1.0, 2.0], (3))
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/tuple_and_get_tuple_element.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/tuple_and_get_tuple_element.mlir)
 
 ### uniform_dequantize
 
@@ -5916,7 +5968,7 @@ The behavior of an infinite loop is TBD
 // %results1: 10
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/while.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/while.mlir)
 
 ### xor
 
@@ -5961,7 +6013,7 @@ tensor. Depending on the element type, does the following:
 // %result: [[false, true], [true, false]]
 ```
 
-&nbsp;[More Examples](../stablehlo/tests/interpret/xor.mlir)
+&nbsp;[More Examples](https://github.com/openxla/stablehlo/tree/main/stablehlo/tests/interpret/xor.mlir)
 
 ## Execution
 
@@ -6422,7 +6474,7 @@ For some operations e.g. `broadcast_in_dim`, types of their outputs are
 "load-bearing", i.e. needed to evaluate an operation. In this case, the function
 takes these types as arguments.
 
-#### Function on values
+#### Functions on values
 
 * All Python's operators and functions are available. E.g. both
 [subscription](https://docs.python.org/3/reference/expressions.html#subscriptions)
@@ -6483,6 +6535,14 @@ function returns `true`. If `x` is not a tensor, returns `None`.
 * `split(x: Value, num_results: Value, axis: Value) -> Value` is defined on
 tensors and returns `num_results` slices of `x` along the axis `axis`.
 If `x` is not a tensor or `dim(x, axis) % num_results != 0`, returns `None`.
+
+* `is_defined_in_parent_scope(x: Value) -> Value` is defined on strings
+  and returns `true` if `x` is the name of a function defined in the same scope
+  as the parent function of the relevant op.
+
+* `is_namespaced_op_name(x: Value) -> Value` is defined on strings and returns
+  `true` if `x` is a valid op name, that is it respects the following regular
+  expression: `[a-zA-Z][a-zA-Z0-9_]*([.][a-zA-Z0-9_$]+)+`
 
 #### Shape computations
 

@@ -79,6 +79,25 @@ def StablehloRefineShapesPass : Pass<"stablehlo-refine-shapes", "ModuleOp"> {
   }];
 }
 
+def StablehloRefineArgumentsPass : Pass<"stablehlo-refine-arguments", "ModuleOp"> {
+  let summary = "Refines the argument shapes of the main function.";
+  let description = [{
+    Modifies the arguments of the main function using the input type signature.
+    Wraps arguments in custom_call @stablehlo.shape_refinement_operand_wrapper
+    to keep the IR valid before shape refinement is run.
+
+    The `refinedTypesOption` can be used to specify a list of refined types.
+    This can be specified in MLIR with `--types='tensor<...>,tensor<...>'`, or
+    passed to the pass create method. The refinement type list must specify the
+    type of every argument to the `main` method being refined.
+  }];
+  let dependentDialects = ["mlir::stablehlo::StablehloDialect"];
+  let options = [
+    ListOption<"refinedTypesOption", "types", "std::string",
+           "The new types to be used for the main function's arguments, specified as an MLIR TypeRange 'tensor<1x2xf32>, ...'">,
+  ];
+}
+
 def VhloLegalizeToStablehloPass : Pass<"vhlo-legalize-to-stablehlo", "ModuleOp"> {
   let summary = "Legalize VHLO to StableHLO.";
   let dependentDialects = [
@@ -109,4 +128,56 @@ def ChloLegalizeToStablehloPass : Pass<"chlo-legalize-to-stablehlo", "func::Func
 def StablehloAggressiveSimplificationPass
     : Pass<"stablehlo-aggressive-simplification", "func::FuncOp"> {
   let summary = "Canonicalizes StableHLO operations";
+  let dependentDialects = [
+    "mlir::tensor::TensorDialect",
+  ];
+}
+
+def ShapeLegalizeToStablehloPass : Pass<"shape-legalize-to-stablehlo", "func::FuncOp"> {
+  let summary = "Legalize shape-related ops to StableHLO.";
+  let description = [{
+    An experimental pass that legalizes shape-related ops to StableHLO ops.
+
+    Bringing shape and data computations together via an optional pass will
+    make it possible for the StableHLO ecosystem to potentially leverage the
+    compilation pipelines that use StableHLO operations to model dynamism.
+  }];
+  let dependentDialects = ["mlir::stablehlo::StablehloDialect"];
+}
+
+def StablehloLegalizeCompositeToCallPass :
+    Pass<"stablehlo-legalize-composite-to-call", "func::FuncOp"> {
+  let summary = "Replaces composite ops with a call to their decomposition";
+  let description = [{
+    Replaces composite ops with a call to their decomposition, e.g. the below:
+
+    ```mlir
+    stablehlo.composite "my_namespace.my_op" %arg0, %arg1 {
+      decomposition = @bar,
+      version = 1,
+      composite_attributes = {
+        "my_attribute": "my_value"
+      }
+    }
+    ```
+
+    Will become:
+
+    ```mlir
+    func.call @bar(%arg0, %arg1)
+    ```
+
+    A subset of composites can be excepted from this transformation using the
+    "except" flag, e.g.:
+
+    ```bash
+    stablehlo-opt --stablehlo-legalize-composite-to-call=except='foo.baz,foo.qux'
+    ```
+  }];
+  let dependentDialects = [
+    "mlir::func::FuncDialect",
+  ];
+  let options = [
+    ListOption<"exceptListOption", "except", "std::string", "Names of composites that should not be replaced with calls.">
+  ];
 }

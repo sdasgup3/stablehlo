@@ -40,6 +40,7 @@ limitations under the License.
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/IR/Types.h"
 #include "mlir/IR/Value.h"
+#include "mlir/IR/ValueRange.h"
 #include "mlir/Interfaces/InferTypeOpInterface.h"
 #include "mlir/Support/LogicalResult.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
@@ -146,12 +147,12 @@ LogicalResult refineReturnTypes(PatternRewriter& rewriter, Operation* op,
   if (failed(refineValues(rewriter, op, op->getResults(), types)))
     return failure();
 
-  // This `replaceOpWithIf` call doesn't actually change the IR, but
+  // This `replaceOpUsesWithIf` call doesn't actually change the IR, but
   // it does ask the rewriter to visit all the users of this op. There is no
   // upstream API to achieve this directly, but if it's introduced in the
   // future, we could use it here.
-  rewriter.replaceOpWithIf(op, op->getResults(),
-                           [](OpOperand& use) { return false; });
+  rewriter.replaceOpUsesWithIf(op, op->getResults(),
+                               [](OpOperand& use) { return false; });
   return success();
 }
 
@@ -706,7 +707,19 @@ struct RefineCustomCallOpPattern : public OpRewritePattern<CustomCallOp> {
     SmallVector<ShapedTypeComponents> refinements;
     if (failed(hlo::getShapeRefinements(op.getLoc(), op, refinements)))
       return rewriter.notifyMatchFailure(op, "expected valid refinements");
-    return refineReturnTypes(rewriter, op, refinements);
+    if (failed(refineReturnTypes(rewriter, op, refinements)))
+      return rewriter.notifyMatchFailure(op, "refineReturnTypes failed");
+
+    // Clean up operand buffers after refinement
+    // Must do in this pattern to avoid needing multiple refinement iterations
+    if (op.getCallTargetName().equals(kCustomCallOperandBarrierTarget)) {
+      Value operand = op.getOperand(0);
+      if (operand.getType() == op.getResult(0).getType()) {
+        op.replaceAllUsesWith(ValueRange(operand));
+      }
+      op.erase();
+    }
+    return success();
   }
 };
 
@@ -723,6 +736,19 @@ struct RefineDotGeneralOpPattern : public OpRewritePattern<DotGeneralOp> {
             op.getDotDimensionNumbersAttr().getRhsContractingDimensions(),
             op.getPrecisionConfig(), inferredReturnShapes)))
       return rewriter.notifyMatchFailure(op, "inferDotGeneralOp failed");
+    return refineReturnTypes(rewriter, op, inferredReturnShapes);
+  }
+};
+
+struct RefineDotOpPattern : public OpRewritePattern<DotOp> {
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(DotOp op,
+                                PatternRewriter& rewriter) const override {
+    SmallVector<ShapedTypeComponents> inferredReturnShapes;
+    if (failed(hlo::inferDotOp(
+            /*location=*/{}, op.getLhs().getType(), op.getRhs().getType(),
+            op.getPrecisionConfig(), inferredReturnShapes)))
+      return rewriter.notifyMatchFailure(op, "inferDotOp failed");
     return refineReturnTypes(rewriter, op, inferredReturnShapes);
   }
 };
@@ -1166,6 +1192,7 @@ void populateStablehloRefineShapesPatterns(RewritePatternSet* patterns,
   patterns->add<RefineConvolutionOpPattern>(context);
   patterns->add<RefineCustomCallOpPattern>(context);
   patterns->add<RefineDotGeneralOpPattern>(context);
+  patterns->add<RefineDotOpPattern>(context);
   patterns->add<RefineDynamicBroadcastInDimOpPattern>(context);
   patterns->add<RefineDynamicConvOpPattern>(context);
   patterns->add<RefineDynamicIotaOpPattern>(context);

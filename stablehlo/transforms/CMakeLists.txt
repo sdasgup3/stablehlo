@@ -24,10 +24,13 @@ add_mlir_dialect_library(StablehloPasses
   PARTIAL_SOURCES_INTENDED
   ChloLegalizeToStablehlo.cpp
   PassPipelines.cpp
+  ShapeLegalizeToStablehlo.cpp
   StablehloAggressiveSimplification.cpp
   StablehloCanonicalizeDynamism.cpp
+  StablehloLegalizeCompositeToCall.cpp
   StablehloInstrumentWithProbe.cpp
   StablehloLegalizeToVhlo.cpp
+  StablehloRefineArguments.cpp
   StablehloRefineShapes.cpp
   VhloLegalizeToStablehlo.cpp
   VhloToVersion.cpp
@@ -39,6 +42,8 @@ add_mlir_dialect_library(StablehloPasses
   LINK_LIBS PUBLIC
   ChloOps
   InterpreterOps
+  MLIRArithDialect
+  MLIRAsmParser
   MLIRComplexDialect
   MLIRFuncDialect
   MLIRFunctionInterfaces

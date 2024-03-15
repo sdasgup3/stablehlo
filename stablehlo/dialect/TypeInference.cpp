@@ -43,9 +43,12 @@ limitations under the License.
 #include "llvm/ADT/iterator_range.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/MathExtras.h"
+#include "llvm/Support/Regex.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Quant/QuantTypes.h"
 #include "mlir/IR/Attributes.h"
 #include "mlir/IR/BuiltinAttributes.h"
+#include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Diagnostics.h"
 #include "mlir/IR/Location.h"
@@ -62,6 +65,25 @@ limitations under the License.
 
 namespace mlir {
 namespace hlo {
+namespace {
+//===----------------------------------------------------------------------===//
+// Utils for quantization specific verifications
+//===----------------------------------------------------------------------===//
+template <typename T>
+bool allQuantized(ArrayRef<Type> typeRange) {
+  return llvm::all_of(typeRange, [&](Type val) {
+    return val.cast<ShapedType>().getElementType().isa<T>();
+  });
+}
+
+template <typename T>
+bool noneQuantized(ArrayRef<Type> typeRange) {
+  return llvm::all_of(typeRange, [&](Type val) {
+    return !val.cast<ShapedType>().getElementType().isa<T>();
+  });
+}
+
+}  // namespace
 
 //===----------------------------------------------------------------------===//
 // Utils for shape functions.
@@ -1884,18 +1906,11 @@ LogicalResult inferCreateTokenOp(HloDialectInterface* dialect,
 }
 
 LogicalResult inferDotOp(
-    std::optional<Location> location, Value lhs, Value rhs,
-    std::optional<ArrayAttr> precisionConfig,
+    std::optional<Location> location, RankedTensorType lhsType,
+    RankedTensorType rhsType, std::optional<ArrayAttr> precisionConfig,
     SmallVectorImpl<ShapedTypeComponents>& inferredReturnShapes) {
   if (failed(verifyPrecisionConfig(location, precisionConfig)))
     return failure();
-
-  auto lhsType = lhs.getType().dyn_cast<RankedTensorType>();
-  auto rhsType = rhs.getType().dyn_cast<RankedTensorType>();
-  if (!lhsType || !rhsType) {
-    inferredReturnShapes.push_back({});
-    return success();
-  }
 
   SmallVector<int64_t> dimensions;
   if (1 == lhsType.getRank() && 1 == rhsType.getRank() &&
@@ -3366,6 +3381,63 @@ LogicalResult verifyCollectivePermuteOp(
   return success();
 }
 
+LogicalResult verifyCompositeOp(std::optional<Location> loc, Operation* op,
+                                StringRef name, StringRef decomposition,
+                                SymbolTableCollection& symbolTable) {
+  // composite_c1
+  auto nameRegexString = "^[a-zA-Z][a-zA-Z0-9_]*([.][a-zA-Z0-9_$]+)+$";
+  llvm::Regex nameRegex(nameRegexString);
+  if (!nameRegex.match(name))
+    return emitOptionalError(loc,
+                             "name must be a valid namespaced op name, i.e. it "
+                             "must match the following regular expression: ",
+                             nameRegexString, " e.g. \"my_namespace.my_op\"");
+
+  // composite_c2
+  auto decomp = symbolTable.lookupNearestSymbolFrom<mlir::func::FuncOp>(
+      op, StringAttr::get(op->getContext(), decomposition));
+  if (!decomp) {
+    return emitOptionalError(loc, "'", decomposition,
+                             "' does not reference a valid function");
+  }
+
+  auto decompFunType = decomp.getFunctionType();
+
+  // composite_c3
+  auto types = op->getOperandTypes();
+  auto decompTypes = decompFunType.getInputs();
+  if (types.size() != decompTypes.size()) {
+    return emitOptionalError(loc, "has ", types.size(),
+                             " operand(s), but decomposition has ",
+                             decompTypes.size());
+  }
+  for (size_t i = 0; i < types.size(); i++) {
+    if (types[i] != decompTypes[i]) {
+      return emitOptionalError(loc, "operand at index ", i, " has type ",
+                               types[i], ", but decomposition has type ",
+                               decompTypes[i]);
+    }
+  }
+
+  // composite_c4
+  auto resTypes = op->getResultTypes();
+  auto decompResTypes = decompFunType.getResults();
+  if (resTypes.size() != decompResTypes.size()) {
+    return emitOptionalError(loc, "has ", resTypes.size(),
+                             " result(s), but decomposition has ",
+                             decompResTypes.size());
+  }
+  for (size_t i = 0; i < resTypes.size(); i++) {
+    if (resTypes[i] != decompResTypes[i]) {
+      return emitOptionalError(loc, "result at index ", i, " has type ",
+                               resTypes[i], ", but decomposition has type ",
+                               decompResTypes[i]);
+    }
+  }
+
+  return success();
+}
+
 LogicalResult verifyConvolutionOp(
     std::optional<Location> location, Type lhsType, Type rhsType,
     std::optional<ArrayRef<int64_t>> windowStrides,
@@ -3400,14 +3472,69 @@ LogicalResult verifyConvolutionOp(
                              "is incompatible with return type of operation ",
                              shapedResultType, "");
 
+  llvm::SmallVector<Type, 3> typeEntries{lhsType, rhsType, resultType};
+  if (noneQuantized<quant::QuantizedType>(typeEntries)) return success();
+  // convolution_c28
+  if (!allQuantized<quant::QuantizedType>(typeEntries)) {
+    return emitOptionalError(location,
+                             "not all of operands and result are quantized");
+  }
+
+  auto lhsQType =
+      getElementTypeOrSelf(lhsType).dyn_cast<quant::QuantizedType>();
+  auto rhsQType =
+      getElementTypeOrSelf(rhsType).dyn_cast<quant::QuantizedType>();
+  auto resultQType =
+      getElementTypeOrSelf(resultType).dyn_cast<quant::QuantizedType>();
+  // convolution_c29
+  if (lhsQType.getStorageType() != rhsQType.getStorageType())
+    return emitOptionalError(location, "mismatched operand storage types ",
+                             lhsQType.getStorageType(), " and ",
+                             rhsQType.getStorageType());
+  // convolution_c30
+  auto expressedType = lhsQType.getExpressedType();
+  if (expressedType != rhsQType.getExpressedType() ||
+      expressedType != resultQType.getExpressedType())
+    return emitOptionalError(location,
+                             "mismatched operands and result expressed types");
+
+  llvm::SmallVector<Type, 2> typeEntriesPerAxis{rhsType, resultType};
+  if (noneQuantized<quant::UniformQuantizedPerAxisType>(typeEntriesPerAxis))
+    return success();
+  // convolution_c31
+  auto rhsQPAType = rhsQType.dyn_cast<quant::UniformQuantizedPerAxisType>();
+  auto resultQPAType =
+      resultQType.dyn_cast<quant::UniformQuantizedPerAxisType>();
+  if (!rhsQPAType && resultQPAType) {
+    return emitOptionalError(
+        location, "per-tensor rhs expects per-tensor result but received ",
+        rhsType, " and ", resultType, " respectively");
+  }
+
+  // convolution_c32
+  if (rhsQPAType &&
+      rhsQPAType.getQuantizedDimension() != kernelOutputFeatureDimension)
+    return emitOptionalError(
+        location, "mismatched kernel_output_feature_dimension ",
+        kernelOutputFeatureDimension, " and rhs quantized dimension ",
+        rhsQPAType.getQuantizedDimension());
+  // convolution_c33
+  if (resultQPAType &&
+      resultQPAType.getQuantizedDimension() != outputFeatureDimension)
+    return emitOptionalError(location, "mismatched output_feature_dimension ",
+                             outputFeatureDimension,
+                             " and result quantized dimension ",
+                             resultQPAType.getQuantizedDimension());
+
   return success();
 }
 
-LogicalResult verifyDotOp(std::optional<Location> location, Value lhs,
-                          Value rhs, std::optional<ArrayAttr> precisionConfig,
+LogicalResult verifyDotOp(std::optional<Location> location,
+                          RankedTensorType lhsType, RankedTensorType rhsType,
+                          std::optional<ArrayAttr> precisionConfig,
                           Value result) {
   SmallVector<ShapedTypeComponents> inferredReturnShapes;
-  if (failed(inferDotOp(location, lhs, rhs, precisionConfig,
+  if (failed(inferDotOp(location, lhsType, rhsType, precisionConfig,
                         inferredReturnShapes)))
     return failure();
 

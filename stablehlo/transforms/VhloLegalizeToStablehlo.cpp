@@ -500,6 +500,12 @@ SpecialResult convertSpecial(const OpConversionPattern<VhloOpTy>& pattern,
       if (!stablehloAttr) return specialFailure();
     }
   }
+  if constexpr (std::is_same<VhloOpTy, vhlo::CompositeOpV1>::value) {
+    if (vhloName == "decomposition") {
+      stablehloAttr = convertSymbol(vhloAttr, pattern.getTypeConverter());
+      if (!stablehloAttr) return specialFailure();
+    }
+  }
   if constexpr (std::is_same<VhloOpTy, vhlo::CallOpV1>::value) {
     if (vhloName == "callee") {
       stablehloAttr = convertFuncCallee(vhloAttr, pattern.getTypeConverter());
@@ -598,6 +604,11 @@ bool isEmptyArray(Attribute vhloAttr) {
   return attr && attr.getValue().empty();
 }
 
+bool isEmptyDictionary(Attribute vhloAttr) {
+  auto attr = vhloAttr.dyn_cast_or_null<vhlo::DictionaryV1Attr>();
+  return attr && attr.getValue().empty();
+}
+
 bool isEmptyString(Attribute vhloAttr) {
   auto attr = vhloAttr.dyn_cast_or_null<vhlo::StringV1Attr>();
   return attr && attr.getValue().empty();
@@ -673,6 +684,14 @@ LogicalResult removeDefaults(const OpConversionPattern<VhloOpTy>& pattern,
                vhlo::ComparisonTypeV1Attr::get(pattern.getContext(),
                                                vhlo::ComparisonTypeV1::NOTYPE)))
       eraseAttrs(vhloAttrs, "compare_type");
+  }
+  if constexpr (std::is_same<VhloOpTy, vhlo::CompositeOpV1>::value) {
+    if (isInteger(vhloOp.getVersionAttr(), 0)) {
+      eraseAttrs(vhloAttrs, "version");
+    }
+    if (isEmptyDictionary(vhloOp.getCompositeAttributesAttr())) {
+      eraseAttrs(vhloAttrs, "composite_attributes");
+    }
   }
   if constexpr (std::is_same<VhloOpTy, vhlo::ConvolutionOpV1>::value ||
                 std::is_same<VhloOpTy, vhlo::DynamicConvOpV1>::value) {
@@ -837,12 +856,12 @@ class VhloToStablehloOpConverter : public OpConversionPattern<VhloOpTy> {
     // additional argument for the generic builder.
     VhloToStablehloOp<VhloOpTy> stablehloOp;
     if constexpr (std::is_same<VhloOpTy, vhlo::CaseOpV1>::value) {
-      stablehloOp = rewriter.replaceOpWithNewOp<stablehlo::CaseOp>(
-          vhloOp, stablehloTypes, stablehloOperands, stablehloAttrs,
+      stablehloOp = rewriter.create<stablehlo::CaseOp>(
+          vhloOp.getLoc(), stablehloTypes, stablehloOperands, stablehloAttrs,
           vhloOp.getBranches().size());
     } else {
-      stablehloOp = rewriter.replaceOpWithNewOp<VhloToStablehloOp<VhloOpTy>>(
-          vhloOp, stablehloTypes, stablehloOperands, stablehloAttrs);
+      stablehloOp = rewriter.create<VhloToStablehloOp<VhloOpTy>>(
+          vhloOp.getLoc(), stablehloTypes, stablehloOperands, stablehloAttrs);
     }
 
     for (auto [vhloRegion, stablehloRegion] :
@@ -854,6 +873,8 @@ class VhloToStablehloOpConverter : public OpConversionPattern<VhloOpTy> {
                                              /*entryConversion=*/nullptr)))
         return failure();
     }
+
+    rewriter.replaceOp(vhloOp, stablehloOp);
     return success();
   }
 };
