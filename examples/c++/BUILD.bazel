@@ -25,6 +25,7 @@ cc_binary(
     ],
     deps = [
         "//:stablehlo_ops",
+        "@llvm-project//llvm:Support",
         "@llvm-project//mlir:FuncDialect",
         "@llvm-project//mlir:IR",
         "@llvm-project//mlir:QuantOps",
@@ -38,6 +39,7 @@ cc_test(
     ],
     deps = [
         "//:stablehlo_ops",
+        "@llvm-project//llvm:Support",
         "@llvm-project//mlir:FuncDialect",
         "@llvm-project//mlir:IR",
         "@llvm-project//mlir:QuantOps",
