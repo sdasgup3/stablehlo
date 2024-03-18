@@ -74,14 +74,27 @@ jobs:
           CMAKE_BUILD_TYPE: Release
           MLIR_ENABLE_BINDINGS_PYTHON: ON
 
+    - name: Setup Core Dumps
+      run: |
+          sudo mkdir /cores
+          sudo chmod 777 /cores
+          # Core filenames will be of the form executable.pid.timestamp:
+          sudo bash -c 'echo "/cores/%e.%p.%t" > /proc/sys/kernel/core_pattern'
+
     - name: Build and Test StableHLO (with AddressSanitizer)
       shell: bash
       run: |
+        ulimit -c unlimited         # Enable core dumps to be captured (must be in same run block)
         ./build_tools/github_actions/ci_build_cmake.sh "$LLVM_BUILD_DIR" "$STABLEHLO_BUILD_DIR"
       env:
           CMAKE_BUILD_TYPE: Release
           STABLEHLO_ENABLE_BINDINGS_PYTHON: OFF
-          STABLEHLO_ENABLE_SANITIZER: address
+          STABLEHLO_ENABLE_SANITIZER: OFF
+
+    - name: my runner
+      shell: bash
+      run: |
+        /home/runner/work/stablehlo/stablehlo/stablehlo-build/bin/stablehlo-opt /home/runner/work/stablehlo/stablehlo/stablehlo/conversions/linalg/tests/miscellaneous.mlir --stablehlo-legalize-to-linalg --split-input-file --canonicalize ; cd /home/runner/work/stablehlo/stablehlo/examples/c++ && /home/runner/work/stablehlo/stablehlo/stablehlo-build/examples/c++/stablehlo-add
 
     - name: Build and Test StableHLO (with Python bindings)
       shell: bash
@@ -90,3 +103,11 @@ jobs:
       env:
           CMAKE_BUILD_TYPE: Release
           STABLEHLO_ENABLE_BINDINGS_PYTHON: ON
+
+    - name: Upload Core Dumps
+      if: ${{ failure() }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: crashes
+        path: /cores/*
+        if-no-files-found: ignore

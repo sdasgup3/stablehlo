@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
+#include "llvm/Support/PrettyStackTrace.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Quant/QuantOps.h"
 #include "mlir/IR/BuiltinOps.h"
@@ -20,6 +21,8 @@ limitations under the License.
 #include "stablehlo/dialect/StablehloOps.h"
 
 int main() {
+  llvm::EnablePrettyStackTrace();  // Enable pretty stack traces
+
   mlir::MLIRContext context;
 
   /** create module **/
