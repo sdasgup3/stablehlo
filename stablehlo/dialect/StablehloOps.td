@@ -660,8 +660,8 @@ class StableHLO_BinaryElementwiseOp<string mnemonic, list<Trait> traits,
     OperandType:$rhs
   );
 
-  let extraClassDeclaration = commonClassDeclaration # [{
-    LogicalResult reifyReturnTypeShapes(
+    string binClassDeclaration = [{
+      LogicalResult reifyReturnTypeShapes(
         OpBuilder& builder, ValueRange operands,
         SmallVectorImpl<Value>& reifiedReturnShapes) {
       return ::mlir::hlo::deriveShapeFromOperand(&builder, getOperation(),
@@ -669,6 +669,8 @@ class StableHLO_BinaryElementwiseOp<string mnemonic, list<Trait> traits,
                                                  &reifiedReturnShapes);
     }
   }];
+  let extraClassDeclaration = commonClassDeclaration # binClassDeclaration;
+
 
   let results = (outs ResultType:$result);
 
@@ -678,9 +680,11 @@ class StableHLO_BinaryElementwiseOp<string mnemonic, list<Trait> traits,
   }];
 }
 
-def StableHLO_AddOp : StableHLO_BinaryElementwiseOp<"add",
-      [HLO_Commutative, Pure, HLO_CompatibleOperandsAndResultType],
-      HLO_TensorOrPerAxisQuantizedTensor> {
+def StableHLO_AddOp : StableHLO_BinaryElementwiseOp<"add", [HLO_Commutative, Pure,
+InferTypeOpInterface,
+DeclareOpInterfaceMethods<InferShapedTypeOpInterface, ["inferReturnTypeComponents"]>], HLO_TensorOrPerAxisQuantizedTensor> {
+
+
   let summary = "Add operation";
   let description = [{
     Performs element-wise addition of two tensors `lhs` and `rhs` and produces a
@@ -694,6 +698,30 @@ def StableHLO_AddOp : StableHLO_BinaryElementwiseOp<"add",
     %result = stablehlo.add %lhs, %rhs : tensor<2x2xi32>
     ```
   }];
+
+  let extraClassDeclaration = commonClassDeclaration # binClassDeclaration # [{
+
+static LogicalResult inferReturnTypes(
+      MLIRContext * /*context*/, std::optional<Location> location,
+      ValueRange operands, DictionaryAttr /*attributes*/,
+      OpaqueProperties /*properties*/, RegionRange /*regions*/,
+      SmallVectorImpl<Type> &inferredReturnTypes) {
+    // TODO(b/231358795): Review the use of InferTypeOpInterface for ops that
+    // support quantization or sparsity.
+    if (operands.empty())
+      return emitOptionalError(
+          location,
+          "Expected non-empty operands for [CompatibleOperandsAndResultType]");
+
+    auto inferredTypeOrErr =
+        mlir::hlo::inferMostSpecificType(location, operands.getTypes());
+    if (failed(inferredTypeOrErr)) return failure();
+    inferredReturnTypes.emplace_back(*inferredTypeOrErr);
+    return success();
+  }
+
+  }];
+
 }
 
 def StableHLO_Atan2Op : StableHLO_BinaryElementwiseOp<"atan2",
