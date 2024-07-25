@@ -22,7 +22,7 @@ limitations under the License.
 #include "stablehlo/conversions/tosa/transforms/Passes.h"
 #include "stablehlo/dialect/StablehloOps.h"
 
-#define PASS_NAME "stablehlo-prepare-to-tosa"
+#define PASS_NAME "stablehlo-prepare-for-tosa"
 #define DEBUG_TYPE PASS_NAME
 
 namespace mlir {
