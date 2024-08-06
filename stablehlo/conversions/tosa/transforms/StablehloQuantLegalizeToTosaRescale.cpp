@@ -32,9 +32,6 @@ limitations under the License.
 #define PASS_NAME "stablehlo-quant-legalize-to-tosa-rescale"
 #define DEBUG_TYPE PASS_NAME
 
-using namespace mlir;
-using namespace mlir::tosa;
-
 namespace mlir {
 namespace tosa {
 
@@ -42,30 +39,6 @@ namespace tosa {
 #include "stablehlo/conversions/tosa/transforms/Passes.h.inc"
 
 namespace {
-
-struct StablehloQuantLegalizeToTosaRescalePass
-    : impl::StablehloQuantLegalizeToTosaRescalePassBase<
-          StablehloQuantLegalizeToTosaRescalePass> {
-  void runOnOperation() final;
-
-  LogicalResult initialize(MLIRContext* ctx) override;
-
- private:
-  FrozenRewritePatternSet patterns;
-};
-
-#define DECL_CONVERT_OP(stablehlo_op)                                        \
-  struct ConvertStablehloQuant##stablehlo_op##Op                             \
-      : public OpRewritePattern<stablehlo::stablehlo_op##Op> {               \
-    using OpRewritePattern<stablehlo::stablehlo_op##Op>::OpRewritePattern;   \
-    LogicalResult matchAndRewrite(stablehlo::stablehlo_op##Op op,            \
-                                  PatternRewriter& rewriter) const override; \
-  }
-
-DECL_CONVERT_OP(Add);
-DECL_CONVERT_OP(Subtract);
-
-#undef DECL_CONVERT_OP
 
 // create a tosa rescale op and return its result value
 Value buildRescale(PatternRewriter& rewriter, Location loc,
@@ -75,7 +48,7 @@ Value buildRescale(PatternRewriter& rewriter, Location loc,
   // bool input_unsigned = input_val.getType().isUnsignedInteger();
   // bool output_unsigned = output_type.isUnsignedInteger();
 
-  auto rescale_op = rewriter.create<tosa::RescaleOp>(
+  auto rescale_op = rewriter.create<RescaleOp>(
       loc, output_type, input_val,
       rewriter.getI32IntegerAttr(static_cast<int32_t>(inputZp)),
       rewriter.getI32IntegerAttr(static_cast<int32_t>(outputZp)),
@@ -221,37 +194,47 @@ LogicalResult matchAndRewriteAddSub(StablehloOp op, PatternRewriter& rewriter) {
   return success();
 }
 
-LogicalResult ConvertStablehloQuantAddOp::matchAndRewrite(
-    stablehlo::AddOp op, PatternRewriter& rewriter) const {
-  return matchAndRewriteAddSub<stablehlo::AddOp>(op, rewriter);
-}
-LogicalResult ConvertStablehloQuantSubtractOp::matchAndRewrite(
-    stablehlo::SubtractOp op, PatternRewriter& rewriter) const {
-  return matchAndRewriteAddSub<stablehlo::SubtractOp>(op, rewriter);
-}
+template <typename StablehloOpType>
+struct QuantizedStablehloOpConversion
+    : public OpRewritePattern<StablehloOpType> {
+  using OpRewritePattern<StablehloOpType>::OpRewritePattern;
+  LogicalResult matchAndRewrite(StablehloOpType op,
+                                PatternRewriter& rewriter) const override {
+    return matchAndRewriteAddSub<StablehloOpType>(op, rewriter);
+  }
+};
 
-LogicalResult StablehloQuantLegalizeToTosaRescalePass::initialize(
-    MLIRContext* ctx) {
-  RewritePatternSet patternList(ctx);
+struct StablehloQuantLegalizeToTosaRescalePass
+    : impl::StablehloQuantLegalizeToTosaRescalePassBase<
+          StablehloQuantLegalizeToTosaRescalePass> {
+  LogicalResult initialize(MLIRContext* ctx) override {
+    RewritePatternSet patternList(ctx);
+    populateStablehloLegalizeQuantToTosaRescalePatterns(&patternList, ctx);
+    patterns = std::move(patternList);
+    return success();
+  }
+  void runOnOperation() final {
+    auto func = getOperation();
+    if (failed(applyPatternsAndFoldGreedily(func, patterns))) {
+      func.emitError(
+          "Failed to apply StablehloLegalizeQuantToRTosaRescale pass ");
+      signalPassFailure();
+    }
+  }
 
-#define DEF_PATTERN_INSERT(PAT)                             \
-  patternList.addWithLabel<ConvertStablehloQuant##PAT##Op>( \
-      {"StablehloQuant##PAT##"}, ctx);
-
-  DEF_PATTERN_INSERT(Add);
-  DEF_PATTERN_INSERT(Subtract);
-
-#undef DEF_PATTERN_INSERT
-
-  patterns = std::move(patternList);
-  return success();
-}
-
-void StablehloQuantLegalizeToTosaRescalePass::runOnOperation() {
-  (void)applyPatternsAndFoldGreedily(getOperation(), patterns);
-}
+ private:
+  FrozenRewritePatternSet patterns;
+};
 
 }  // namespace
+
+void populateStablehloLegalizeQuantToTosaRescalePatterns(
+    RewritePatternSet* patterns, MLIRContext* context) {
+  patterns->addWithLabel<QuantizedStablehloOpConversion<stablehlo::AddOp>>(
+      {"StablehloQuantAddOp"}, context);
+  patterns->addWithLabel<QuantizedStablehloOpConversion<stablehlo::SubtractOp>>(
+      {"StablehloQuantSubtractOp"}, context);
+}
 
 }  // namespace tosa
 }  // namespace mlir
